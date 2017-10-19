@@ -86,6 +86,7 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <rte_dev.h>
 #include <rte_bus.h>
+#include <rte_pci_platform.h>
 
 /** Pathname of PCI devices directory. */
 const char *pci_get_sysfs_path(void);
@@ -149,6 +150,8 @@ struct rte_pci_addr {
 
 struct rte_devargs;
 
+//move this structure to rte_pci_platform.h
+/*
 enum rte_kernel_driver {
 	RTE_KDRV_UNKNOWN = 0,
 	RTE_KDRV_IGB_UIO,
@@ -157,6 +160,7 @@ enum rte_kernel_driver {
 	RTE_KDRV_NIC_UIO,
 	RTE_KDRV_NONE,
 };
+*/
 
 /**
  * A structure describing a PCI device.
