@@ -38,13 +38,10 @@ extern "C" {
 #endif
 
 
-TAILQ_HEAD(platform_driver_list, rte_platform_driver); /**< Platform drivers in D-linked Q. */
-TAILQ_HEAD(platform_device_list, rte_platform_device); /**< Platform devices in D-linked Q. */
+TAILQ_HEAD(rte_platform_driver_list, rte_platform_driver); /**< Platform drivers in D-linked Q. */
+TAILQ_HEAD(rte_platform_device_list, rte_platform_device); /**< Platform devices in D-linked Q. */
 //TAILQ_HEAD(platform_data_list, rte_platform_data); /**< Platform data in D-linked Q. */
 
-extern struct platform_driver_list platform_driver_list; /**< Global list of Platform drivers. */
-extern struct platform_device_list platform_device_list; /**< Global list of Platform devices. */
-//extern struct platform_data_list  platform_data_list; /**< Global list of Platform data. */
 
 
 /** Pathname of Platform devices directory. */
@@ -68,7 +65,7 @@ const char *platform_get_sysfs_path(void);
  */
 struct rte_platform_device {
     TAILQ_ENTRY(rte_platform_device) next; /**< Next probed UIO device. */
-
+    struct rte_device device;               /**< Inherit core device */
     char *name;      /**< device name. */
     int uio_num;     /**< uio device number */
     /**< UIO Memory Resource. */
@@ -79,6 +76,12 @@ struct rte_platform_device {
     int                          uio_fd;
     int                          numa_node;   /**< NUMA node connection */
 };
+
+/**
+ * @internal
+ * Helper macro for drivers that need to convert to struct rte_platform_device.
+ */
+#define RTE_DEV_TO_PLATFORM(ptr) container_of(ptr, struct rte_platform_device, device)
 
 /**
  * Initialisation function for the driver called during platform probing.
@@ -255,6 +258,16 @@ int rte_platform_probe(void);
  * @author lixu
  */
 void rte_platform_register(struct rte_platform_driver *driver);
+
+/** Helper for PLATFORM device registration from driver (eth, crypto) instance */
+#define RTE_PMD_REGISTER_PLATFORM(nm, platform_drv) \
+RTE_INIT(platforminitfn_ ##nm); \
+static void platforminitfn_ ##nm(void) \
+{\
+	(platform_drv).driver.name = RTE_STR(nm);\
+	rte_platform_register(&platform_drv); \
+} \
+RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 /**
  * Unregister a Platform UIO driver.

@@ -24,6 +24,7 @@
 #include <rte_malloc.h>
 #include <rte_dev.h>
 #include <rte_platform.h>
+#include <rte_ethdev_platform.h>
 #include "hns_ethdev.h"
 #include "hns_logs.h"
 
@@ -1415,7 +1416,7 @@ static int
 eth_hns_dev_init (struct rte_eth_dev *dev){
     struct hns_adapter *hns = dev->data->dev_private;
     struct hns_uio_ioctrl_para args;
-    struct rte_platform_device *pdev = dev->platform_dev;
+    struct rte_platform_device *pdev = HNS_DEV_TO_PLATFORM(dev);
     int uio_index = 
         (int)pdev->mem_resource[3].phys_addr;
     int fd, i;
@@ -1510,7 +1511,7 @@ eth_hns_dev_uninit (struct rte_eth_dev *dev){
     if (hns->stopped == 0)
         eth_hns_close(dev);
 
-    platform_dev = dev->platform_dev;
+    platform_dev = HNS_DEV_TO_PLATFORM(dev);
     if(platform_dev->intr_handle.intr_vec){
         rte_free(platform_dev->intr_handle.intr_vec);
         platform_dev->intr_handle.intr_vec = NULL;
@@ -1524,17 +1525,31 @@ eth_hns_dev_uninit (struct rte_eth_dev *dev){
 }
 
 
+static int eth_hns_platform_probe(struct rte_platform_driver *platform_drv __rte_unused,
+	struct rte_platform_device *platform_dev)
+{
+	return rte_eth_dev_platform_generic_probe(platform_dev,
+		sizeof(struct hns_adapter), eth_hns_dev_init);
+}
 
-static struct eth_driver rte_hns_pmd ={
-    .platform_drv={
-        .name= "rte_hns_pmd",
-        .id_table = platform_id_hns_map,
-        .drv_flags = RTE_PLATFORM_DRV_NEED_MAPPING | RTE_PLATFORM_DRV_INTR_LSC,
-    },
-    .eth_dev_init = eth_hns_dev_init,
-    .eth_dev_uninit = eth_hns_dev_uninit,
-    .dev_private_size = sizeof (struct hns_adapter),
+static int eth_hns_platform_remove(struct rte_platform_device *platform_dev)
+{
+	return rte_eth_dev_platform_generic_remove(platform_dev, eth_hns_dev_uninit);
+}
+
+/*
+ * virtual function driver struct
+ */
+static struct rte_platform_driver rte_hns_pmd = {
+	.id_table = platform_id_hns_map,
+	.drv_flags = RTE_PLATFORM_DRV_NEED_MAPPING | RTE_PLATFORM_DRV_INTR_LSC,
+	.probe = eth_hns_platform_probe,
+	.remove = eth_hns_platform_remove,
 };
+
+
+
+
 
 /**
 static struct eth_driver rte_hnsvf_pmd ={
@@ -1550,19 +1565,6 @@ static struct eth_driver rte_hnsvf_pmd ={
 */
 
 
-static int
-rte_hns_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-    rte_eth_platform_driver_register(&rte_hns_pmd);
-    return 0;
-}
-
-static int
-rte_hns_pmd_uninit(const char *name)
-{
-    (void)name;
-    return 0;
-}
 
 /**
 static int
@@ -1573,11 +1575,6 @@ rte_hnsvf_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
     return 0;
 }
 */
-static struct rte_driver rte_hns_driver = {
-    .type = PMD_PDEV,
-    .init = rte_hns_pmd_init,
-    .uninit = rte_hns_pmd_uninit,
-};
 
 /**
 static struct rte_driver rte_hnsvf_driver = {
@@ -1586,6 +1583,6 @@ static struct rte_driver rte_hnsvf_driver = {
 };
 */
 
-PMD_REGISTER_DRIVER(rte_hns_driver, hns);
+RTE_PMD_REGISTER_PLATFORM(net_hns, rte_hns_pmd);
 /*PMD_REGISTER_DRIVER(rte_hnsvf_driver, hnsvf);*/
 

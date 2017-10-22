@@ -6,6 +6,9 @@
 #include <rte_optimization.h>
 #include <rte_ring.h>
 
+#define HNS_DEV_TO_PLATFORM(eth_dev) \
+	RTE_DEV_TO_PLATFORM((eth_dev)->device)
+	
 #define HNS_RX_HEAD_SIZE 256
 #define MAX_SKB_FRAGS 18
 #define MAX_QUEUE_NUM 32
