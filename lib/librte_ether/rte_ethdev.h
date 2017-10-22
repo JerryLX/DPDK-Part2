@@ -1233,10 +1233,20 @@ typedef uint16_t (*eth_rx_burst_t)(void *rxq,
 				   uint16_t nb_pkts);
 /**< @internal Retrieve input packets from a receive queue of an Ethernet device. */
 
+typedef uint16_t (*eth_rx_burst_remain_t)(void *rxq,
+				   struct rte_mbuf **rx_pkts,
+				   uint16_t nb_pkts);
+/**< @internal Retrieve input packets from a receive queue of an Ethernet device. (private mbuf)*/
+
 typedef uint16_t (*eth_tx_burst_t)(void *txq,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
 /**< @internal Send output packets on a transmit queue of an Ethernet device. */
+
+typedef uint16_t (*eth_tx_burst_remain_t)(void *txq,
+				   struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
+/**< @internal Send output packets on a transmit queue of an Ethernet device.(private mbuf) */
 
 typedef uint16_t (*eth_tx_prep_t)(void *txq,
 				   struct rte_mbuf **tx_pkts,
@@ -1659,6 +1669,8 @@ enum rte_eth_dev_state {
 struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	eth_rx_burst_remain_t rx_pkt_burst_remain; /**< Pointer to PMD receive function.(private mbuf) */
+	eth_tx_burst_remain_t tx_pkt_burst_remain; /**< Pointer to PMD transmit function. (private mbuf) */
 	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
 	struct rte_eth_dev_data *data;  /**< Pointer to device data */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
