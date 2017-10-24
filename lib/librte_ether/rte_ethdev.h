@@ -1469,6 +1469,8 @@ struct eth_dev_ops {
 
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
+	eth_tso_enable_t           tso_enable; /**< TSO ON. */
+	eth_tso_disable_t          tso_disable;/**< TSO OFF. */
 	eth_allmulticast_enable_t  allmulticast_enable;/**< RX multicast ON. */
 	eth_allmulticast_disable_t allmulticast_disable;/**< RX multicast OF. */
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
@@ -1742,6 +1744,7 @@ struct rte_eth_dev_data {
 		all_multicast : 1, /**< RX all multicast mode ON(1) / OFF(0). */
 		dev_started : 1,   /**< Device state: STARTED(1) / STOPPED(0). */
 		lro         : 1;   /**< RX LRO is ON(1) / OFF(0) */
+		tso         : 1;   /**< TX TSO is ON(1) / OFF(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
 	/** Queues state: STARTED(1) / STOPPED(0) */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
@@ -2206,6 +2209,34 @@ void rte_eth_promiscuous_disable(uint8_t port_id);
  *   - (-1) on error
  */
 int rte_eth_promiscuous_get(uint8_t port_id);
+
+/**
+ * Enable receipt in TSO mode for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ */
+void rte_eth_tso_enable(uint8_t port_id);
+
+/**
+ * Disable receipt in TSO mode for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ */
+void rte_eth_tso_disable(uint8_t port_id);
+
+/**
+ * Return the value of TSO mode for an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (1) if TSO is enabled
+ *   - (0) if TSO is disabled.
+ *   - (-1) on error
+ */
+int rte_eth_tso_get(uint8_t port_id);
 
 /**
  * Enable the receipt of any multicast frame by an Ethernet device.
@@ -2801,6 +2832,46 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 	return nb_rx;
 }
 
+static inline uint16_t
+rte_eth_rx_burst_remain(uint8_t port_id, uint16_t queue_id,
+		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+    int has_remain_function = 1;
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	if(*dev->rx_pkt_burst_remain == NULL){
+        RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
+        has_remain_function = 0;
+    }
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
+		return 0;
+	}
+#endif
+    int16_t nb_rx;
+    if(has_remain_function)
+	    nb_rx = (*dev->rx_pkt_burst_remain)(dev->data->rx_queues[queue_id],
+			    rx_pkts, nb_pkts);
+    else
+	    nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
+			    rx_pkts, nb_pkts);
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_rx = cb->fn.rx(port_id, queue_id, rx_pkts, nb_rx,
+						nb_pkts, cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+
+	return nb_rx;
+}
+
 /**
  * Get the number of used descriptors of a rx queue
  *
@@ -3054,6 +3125,42 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 	}
 #endif
 
+	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
+}
+
+static inline uint16_t
+rte_eth_tx_burst_remain(uint8_t port_id, uint16_t queue_id,
+		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+    int has_remain_function = 1;
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	if(*dev->tx_pkt_burst_remain == NULL){
+        RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
+        has_remain_function = 0;
+    }
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		printf("invalid tx queue!\n");
+        return 0;
+	}
+#endif
+
+#ifdef RTE_ETHDEV_RXTX_CALLBACKS
+	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
+
+	if (unlikely(cb != NULL)) {
+		do {
+			nb_pkts = cb->fn.tx(port_id, queue_id, tx_pkts, nb_pkts,
+					cb->param);
+			cb = cb->next;
+		} while (cb != NULL);
+	}
+#endif
+    if(has_remain_function)
+	    return (*dev->tx_pkt_burst_remain)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 }
 
