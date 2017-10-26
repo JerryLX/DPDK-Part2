@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -28,24 +28,26 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
 #
+# module name and path
+#
+MODULE = plf_uio
+MODULE_PATH = drivers/net/plf_uio
 
-#include "common_base"
+#
+# CFLAGS
+#
+MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=100
+MODULE_CFLAGS += -I$(RTE_OUTPUT)/include
+MODULE_CFLAGS += -Winline -Wall -Werror
+MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 
-CONFIG_RTE_EXEC_ENV="linuxapp"
-CONFIG_RTE_EXEC_ENV_LINUXAPP=y
+#
+# all source are stored in SRCS-y
+#
+SRCS-y := plf_uio.c
 
-CONFIG_RTE_EAL_IGB_UIO=y
-#CONFIG_RTE_EAL_HNS_UIO=y
-CONFIG_RTE_EAL_VFIO=y
-CONFIG_RTE_KNI_KMOD=y
-CONFIG_RTE_LIBRTE_KNI=y
-CONFIG_RTE_LIBRTE_PMD_KNI=y
-CONFIG_RTE_LIBRTE_VHOST=y
-CONFIG_RTE_LIBRTE_PMD_VHOST=y
-CONFIG_RTE_LIBRTE_PMD_AF_PACKET=y
-CONFIG_RTE_LIBRTE_PMD_TAP=y
-CONFIG_RTE_LIBRTE_AVP_PMD=y
-CONFIG_RTE_LIBRTE_NFP_PMD=y
-CONFIG_RTE_LIBRTE_POWER=y
-CONFIG_RTE_VIRTIO_USER=y
+include $(RTE_SDK)/mk/rte.module.mk
