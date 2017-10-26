@@ -78,7 +78,6 @@
 #include <rte_version.h>
 #include <rte_atomic.h>
 #include <malloc_heap.h>
-#include <rte_platform.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
