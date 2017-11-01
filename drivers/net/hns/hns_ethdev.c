@@ -1416,6 +1416,7 @@ static int
 eth_hns_dev_init (struct rte_eth_dev *dev){
     struct hns_adapter *hns = dev->data->dev_private;
     struct hns_uio_ioctrl_para args;
+	struct rte_platform_device *pdev = HNS_DEV_TO_PLATFORM(dev);
     int uio_index = 
         (int)pdev->mem_resource[3].phys_addr;
     int fd, i;
@@ -1549,56 +1550,6 @@ static struct rte_platform_driver rte_hns_pmd = {
 
 
 
-
-/**
-static struct eth_driver rte_hnsvf_pmd ={
-    .platform_drv={
-        .name="rte_hnsvf_pmd",
-        .id_table = platform_id_hnsvf_map,
-        .drv_flags = RTE_PLATFORM_DRV_NEED_MAPPING | RTE_PLATFORM_DRV_INTR_LSC,
-    },
-    .eth_dev_init = eth_hnsvf_dev_init,
-    .eth_dev_uninit = eth_hnsvf_dev_uninit,
-    .dev_private_size = sizeof (struct hns_adapter),
-};
-*/
-
-
-static int
-rte_hns_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-    rte_eth_platform_driver_register(&rte_hns_pmd);
-    return 0;
-}
-
-static int
-rte_hns_pmd_uninit(const char *name)
-{
-    (void)name;
-    return 0;
-}
-
-/**
-static int
-rte_hnsvf_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-    PMD_INIT_FUNC_TRACE();
-    rte_eth_platform_driver_register(&rte_hnsvf_pmd);
-    return 0;
-}
-*/
-static struct rte_driver rte_hns_driver = {
-    .type = PMD_PDEV,
-    .init = rte_hns_pmd_init,
-    .uninit = rte_hns_pmd_uninit,
-};
-
-/**
-static struct rte_driver rte_hnsvf_driver = {
-    .type = PMD_PDEV,
-    .init = rte_hnsvf_pmd_init,
-};
-*/
 
 RTE_PMD_REGISTER_PLATFORM(net_hns, rte_hns_pmd);
 /*PMD_REGISTER_DRIVER(rte_hnsvf_driver, hnsvf);*/
