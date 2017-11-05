@@ -5,6 +5,7 @@
 #include "hns_compat.h"
 #include <rte_optimization.h>
 #include <rte_ring.h>
+#include <rte_platform.h>
 
 #define HNS_DEV_TO_PLATFORM(eth_dev) \
 	RTE_DEV_TO_PLATFORM((eth_dev)->device)

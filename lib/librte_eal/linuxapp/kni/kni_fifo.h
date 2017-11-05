@@ -27,6 +27,11 @@
 
 #include <exec-env/rte_kni_common.h>
 
+static inline void fifo_prefetch0(const volatile void *p)
+{
+        asm volatile ("PRFM PLDL1KEEP, [%0]" : : "r" (p));
+}
+
 /**
  * Adds num elements into the fifo. Return the number actually written
  */
@@ -37,7 +42,8 @@ kni_fifo_put(struct rte_kni_fifo *fifo, void **data, uint32_t num)
 	uint32_t fifo_write = fifo->write;
 	uint32_t fifo_read = fifo->read;
 	uint32_t new_write = fifo_write;
-
+    fifo_prefetch0(&data[i]);
+    fifo_prefetch0(&fifo->buffer[fifo_write]);
 	for (i = 0; i < num; i++) {
 		new_write = (new_write + 1) & (fifo->len - 1);
 
@@ -60,7 +66,8 @@ kni_fifo_get(struct rte_kni_fifo *fifo, void **data, uint32_t num)
 	uint32_t i = 0;
 	uint32_t new_read = fifo->read;
 	uint32_t fifo_write = fifo->write;
-
+    fifo_prefetch0(&data[i]);
+    fifo_prefetch0(&fifo->buffer[new_read]);
 	for (i = 0; i < num; i++) {
 		if (new_read == fifo_write)
 			break;

@@ -413,7 +413,9 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 					dev_info.function,
 					dev_info.vendor_id,
 					dev_info.device_id);
-#ifdef RTE_KNI_KMOD_ETHTOOL
+					
+    if(!dev_info.is_platform_dev){
+	#ifdef RTE_KNI_KMOD_ETHTOOL
 	pci = pci_get_device(dev_info.vendor_id, dev_info.device_id, NULL);
 
 	/* Support Ethtool */
@@ -454,7 +456,7 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	}
 	if (pci)
 		pci_dev_put(pci);
-#endif
+    #endif
 
 	if (kni->lad_dev)
 		ether_addr_copy(net_dev->dev_addr, kni->lad_dev->dev_addr);
@@ -464,7 +466,16 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		 * version of generating mac address in linux kernel.
 		 */
 		random_ether_addr(net_dev->dev_addr);
-
+    }
+    else{
+        printk("KNI MISC: here comes a platform device!\n");
+        kni->lad_dev = NULL;
+        memcpy(net_dev->dev_addr, dev_info.addr_bytes, ETH_ALEN);
+        printk(KERN_ERR "MAC: %02hhx %02hhx %02hhx %02hhx %02hhx %02hhx",
+                net_dev->dev_addr[0],net_dev->dev_addr[1],
+                net_dev->dev_addr[2],net_dev->dev_addr[3],
+                net_dev->dev_addr[4],net_dev->dev_addr[5]);
+    }
 	ret = register_netdev(net_dev);
 	if (ret) {
 		pr_err("error %i registering device \"%s\"\n",

@@ -87,6 +87,7 @@ struct rte_kni_conf {
 	unsigned mbuf_size; /* mbuf size */
 	struct rte_pci_addr addr;
 	struct rte_pci_id id;
+	uint8_t is_platform_dev; /* Flag to mark platform device */
 
 	__extension__
 	uint8_t force_bind : 1; /* Flag to bind kernel thread */

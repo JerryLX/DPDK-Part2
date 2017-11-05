@@ -190,7 +190,7 @@ int rte_pipeline_check(struct rte_pipeline *p);
  * @return
  *   Number of packets read and processed
  */
-int rte_pipeline_run(struct rte_pipeline *p);
+void rte_pipeline_run2(struct rte_pipeline *p, uint32_t count,uint32_t * pkts);
 
 /**
  * Pipeline flush
