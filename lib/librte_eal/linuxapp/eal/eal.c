@@ -78,6 +78,7 @@
 #include <rte_version.h>
 #include <rte_atomic.h>
 #include <malloc_heap.h>
+#include <rte_platform.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -771,8 +772,13 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = EALREADY;
 		return -1;
 	}
-
-    
+	
+    //for debug by lixu
+    /*  
+    for(i=0;i<argc;i++){
+	    printf("arg %d: %s",i+1,argv[i]);
+    }
+    */
 	logid = strrchr(argv[0], '/');
 	logid = strdup(logid ? logid + 1: argv[0]);
 
@@ -826,6 +832,24 @@ rte_eal_init(int argc, char **argv)
 	rte_srand(rte_rdtsc());
 
 	rte_config_init();
+
+	//by lixu
+	//for vm do not support pci
+#ifndef RTE_LIBRTE_VIRTIO_PLATFORM_PMD
+	if (rte_eal_pci_init() < 0)
+    {
+        printf("failure PCI ======\n");
+		rte_panic("Cannot init PCI\n");
+    }
+    else
+    {
+        printf("success PCI ========\n");
+    }
+#endif
+
+    //by lixu 
+    if (rte_eal_platform_init() < 0)
+        rte_panic("Cannot init Platform\n");
 
 	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
@@ -943,6 +967,12 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = ENOTSUP;
 		return -1;
 	}
+	
+	
+    /* Probe & Initialize Platform devices */
+    //by lixu
+    if (rte_eal_platform_probe())
+        rte_panic("Cannot probe Platform");
 
 	rte_eal_mcfg_complete();
 
