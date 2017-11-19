@@ -1,0 +1,62 @@
+RTE_PMD_REGISTER_PLATFORM!!!!!!!!!!!!!!
+driver name: net_hnsrte_platform_register: (null)
+eal_initEAL: Probing VFIO support...
+rte_pci_scan
+EAL: scanning dir /sys/bus/platform/devices/reg-dummy
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:01
+EAL: scanning dir /sys/bus/platform/devices/IPI0001:00
+EAL: scanning dir /sys/bus/platform/devices/rtc-efi
+EAL: scanning dir /sys/bus/platform/devices/HISI00B2:00
+EAL: scanning dir /sys/bus/platform/devices/sbsa-gwdt.0
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:08
+EAL: scanning dir /sys/bus/platform/devices/HISI00C2:02
+EAL: scaning device HISI00C2:02, uio_num: 0
+.
+..
+map0
+map1
+map2
+map3
+EAL: HISI00C2:02 has driver: hns_uio
+EAL: scanning dir /sys/bus/platform/devices/HISI0162:01
+EAL: scanning dir /sys/bus/platform/devices/ARMH0011:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:06
+EAL: scanning dir /sys/bus/platform/devices/HISI00C2:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:04
+EAL: scanning dir /sys/bus/platform/devices/alarmtimer
+EAL: scanning dir /sys/bus/platform/devices/APMC0D0F:01
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:02
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0141:00
+EAL: scanning dir /sys/bus/platform/devices/IPI0002:00
+EAL: scanning dir /sys/bus/platform/devices/HISI00C2:03
+EAL: scaning device HISI00C2:03, uio_num: 1
+.
+..
+map0
+map1
+map2
+map3
+EAL: HISI00C2:03 has driver: hns_uio
+EAL: scanning dir /sys/bus/platform/devices/HISI0162:02
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:07
+EAL: scanning dir /sys/bus/platform/devices/Fixed MDIO bus.0
+EAL: scanning dir /sys/bus/platform/devices/PNP0C0C:00
+EAL: scanning dir /sys/bus/platform/devices/HISI00C2:01
+EAL: scanning dir /sys/bus/platform/devices/HISI0162:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:05
+EAL: scanning dir /sys/bus/platform/devices/serial8250
+EAL: scanning dir /sys/bus/platform/devices/ipmi_bmc.0001.1
+EAL: scanning dir /sys/bus/platform/devices/PNP0D20:00
+EAL: scanning dir /sys/bus/platform/devices/ACPI0013:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0152:03
+EAL: scanning dir /sys/bus/platform/devices/APMC0D0F:00
+EAL: scanning dir /sys/bus/platform/devices/HISI0191:00
+EAL: PCI device 0005:01:00.0 on NUMA socket 0
+EAL:   probe driver: 8086:10fb net_ixgbe
+EAL: PCI device 0005:01:00.1 on NUMA socket 0
+EAL:   probe driver: 8086:10fb net_ixgbe
+EAL: PCI device 000a:11:00.0 on NUMA socket 0
+EAL:   probe driver: 8086:10fb net_ixgbe
+EAL: PCI device 000a:11:00.1 on NUMA socket 0
+EAL:   probe driver: 8086:10fb net_ixgbe

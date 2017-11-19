@@ -12,3 +12,12 @@ GPATH
 GRTAGS
 tags
 TAGS
+*.o
+*.cmd
+*.ko
+*.o.d
+*.a
+*.map
+*.res
+*.swp
+build/*
