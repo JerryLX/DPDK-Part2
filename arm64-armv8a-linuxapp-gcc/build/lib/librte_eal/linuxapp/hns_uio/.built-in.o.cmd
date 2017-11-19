@@ -1,1 +1,0 @@
-cmd_/root/dpdk-part2/arm64-armv8a-linuxapp-gcc/build/lib/librte_eal/linuxapp/hns_uio/built-in.o :=  rm -f /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/build/lib/librte_eal/linuxapp/hns_uio/built-in.o; ar rcsD /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/build/lib/librte_eal/linuxapp/hns_uio/built-in.o

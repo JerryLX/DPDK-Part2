@@ -1,1 +1,0 @@
-cmd_/root/dpdk-part2/build/build/lib/librte_eal/linuxapp/kni/built-in.o :=  rm -f /root/dpdk-part2/build/build/lib/librte_eal/linuxapp/kni/built-in.o; ar rcsD /root/dpdk-part2/build/build/lib/librte_eal/linuxapp/kni/built-in.o

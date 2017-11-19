@@ -5,11 +5,18 @@
 #include "hns_compat.h"
 #include <rte_optimization.h>
 #include <rte_ring.h>
+<<<<<<< HEAD
 #include <rte_platform.h>
 
 #define HNS_DEV_TO_PLATFORM(eth_dev) \
 	RTE_DEV_TO_PLATFORM((eth_dev)->device)
 
+=======
+
+#define HNS_DEV_TO_PLATFORM(eth_dev) \
+	RTE_DEV_TO_PLATFORM((eth_dev)->device)
+	
+>>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
 #define HNS_RX_HEAD_SIZE 256
 #define MAX_SKB_FRAGS 18
 #define MAX_QUEUE_NUM 32

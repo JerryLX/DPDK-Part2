@@ -52,7 +52,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_HNS) += hns_ethdev.c
 # Export include files
 #
 SYMLINK-y-include += hns_ethdev.h
+<<<<<<< HEAD
 SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_HNS)-include := hns_ethdev.h
+=======
+>>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_HNS) += lib/librte_eal
