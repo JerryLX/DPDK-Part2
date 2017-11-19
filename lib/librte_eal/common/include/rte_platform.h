@@ -38,10 +38,13 @@ extern "C" {
 #endif
 
 
-TAILQ_HEAD(rte_platform_driver_list, rte_platform_driver); /**< Platform drivers in D-linked Q. */
-TAILQ_HEAD(rte_platform_device_list, rte_platform_device); /**< Platform devices in D-linked Q. */
+TAILQ_HEAD(platform_driver_list, rte_platform_driver); /**< Platform drivers in D-linked Q. */
+TAILQ_HEAD(platform_device_list, rte_platform_device); /**< Platform devices in D-linked Q. */
 //TAILQ_HEAD(platform_data_list, rte_platform_data); /**< Platform data in D-linked Q. */
 
+extern struct platform_driver_list platform_driver_list; /**< Global list of Platform drivers. */
+extern struct platform_device_list platform_device_list; /**< Global list of Platform devices. */
+//extern struct platform_data_list  platform_data_list; /**< Global list of Platform data. */
 
 
 /** Pathname of Platform devices directory. */

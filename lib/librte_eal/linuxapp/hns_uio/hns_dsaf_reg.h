@@ -32,15 +32,7 @@
 #define DSAFV2_SBM_NUM		8
 #define DSAFV2_SBM_XGE_CHN    6
 #define DSAFV2_SBM_PPE_CHN    1
-<<<<<<< HEAD
 #define DASFV2_ROCEE_CRD_NUM  1
-=======
-<<<<<<< HEAD
-#define DASFV2_ROCEE_CRD_NUM  1
-=======
-#define DASFV2_ROCEE_CRD_NUM  8
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 #define DSAF_VOQ_NUM		DSAF_NODE_NUM
 #define DSAF_INODE_NUM		DSAF_NODE_NUM
@@ -49,18 +41,9 @@
 #define DSAF_SW_PORT_NUM	8
 #define DSAF_TOTAL_QUEUE_NUM	129
 
-<<<<<<< HEAD
 /* reserved a tcam entry for each port to support promisc by fuzzy match */
 #define DSAFV2_MAC_FUZZY_TCAM_NUM    DSAF_MAX_PORT_NUM
 
-=======
-<<<<<<< HEAD
-/* reserved a tcam entry for each port to support promisc by fuzzy match */
-#define DSAFV2_MAC_FUZZY_TCAM_NUM    DSAF_MAX_PORT_NUM
-
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_TCAM_SUM		512
 #define DSAF_LINE_SUM		(2048 * 14)
 
@@ -97,21 +80,12 @@
 #define DSAF_SUB_SC_PPE_RESET_DREQ_REG			0xA4C
 #define DSAF_SUB_SC_RCB_PPE_COM_RESET_REQ_REG		0xA88
 #define DSAF_SUB_SC_RCB_PPE_COM_RESET_DREQ_REG		0xA8C
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_SUB_SC_DSAF_RESET_REQ_REG			0xAA8
 #define DSAF_SUB_SC_DSAF_RESET_DREQ_REG			0xAAC
 #define DSAF_SUB_SC_ROCEE_RESET_REQ_REG			0xA50
 #define DSAF_SUB_SC_ROCEE_RESET_DREQ_REG		0xA54
 #define DSAF_SUB_SC_ROCEE_CLK_DIS_REG			0x32C
 #define DSAF_SUB_SC_ROCEE_CLK_EN_REG			0x328
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_SUB_SC_LIGHT_MODULE_DETECT_EN_REG		0x2060
 #define DSAF_SUB_SC_TCAM_MBIST_EN_REG			0x2300
 #define DSAF_SUB_SC_DSAF_CLK_ST_REG			0x5300
@@ -168,16 +142,8 @@
 #define DSAF_ROCEE_INT_STS_0_REG	0x200
 #define DSAFV2_SERDES_LBK_0_REG         0x220
 #define DSAF_PAUSE_CFG_REG		0x240
-<<<<<<< HEAD
 #define DSAF_ROCE_PORT_MAP_REG		0x2A0
 #define DSAF_ROCE_SL_MAP_REG		0x2A4
-=======
-<<<<<<< HEAD
-#define DSAF_ROCE_PORT_MAP_REG		0x2A0
-#define DSAF_ROCE_SL_MAP_REG		0x2A4
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_PPE_QID_CFG_0_REG		0x300
 #define DSAF_SW_PORT_TYPE_0_REG		0x320
 #define DSAF_STP_PORT_TYPE_0_REG	0x340
@@ -211,18 +177,9 @@
 #define DSAF_INODE_GE_FC_EN_0_REG		0x1B00
 #define DSAF_INODE_VC0_IN_PKT_NUM_0_REG		0x1B50
 #define DSAF_INODE_VC1_IN_PKT_NUM_0_REG		0x1C00
-<<<<<<< HEAD
 #define DSAF_INODE_IN_PRIO_PAUSE_BASE_REG	0x1C00
 #define DSAF_INODE_IN_PRIO_PAUSE_BASE_OFFSET	0x100
 #define DSAF_INODE_IN_PRIO_PAUSE_OFFSET		0x50
-=======
-<<<<<<< HEAD
-#define DSAF_INODE_IN_PRIO_PAUSE_BASE_REG	0x1C00
-#define DSAF_INODE_IN_PRIO_PAUSE_BASE_OFFSET	0x100
-#define DSAF_INODE_IN_PRIO_PAUSE_OFFSET		0x50
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 #define DSAF_SBM_CFG_REG_0_REG			0x2000
 #define DSAF_SBM_BP_CFG_0_XGE_REG_0_REG		0x2004
@@ -232,17 +189,8 @@
 #define DSAF_SBM_BP_CFG_2_XGE_REG_0_REG		0x200C
 #define DSAF_SBM_BP_CFG_2_PPE_REG_0_REG		0x230C
 #define DSAF_SBM_BP_CFG_2_ROCEE_REG_0_REG	0x260C
-<<<<<<< HEAD
 #define DSAF_SBM_ROCEE_CFG_REG_REG		0x2380
 #define DSAFV2_SBM_BP_CFG_2_ROCEE_REG_0_REG	0x238C
-=======
-<<<<<<< HEAD
-#define DSAF_SBM_ROCEE_CFG_REG_REG		0x2380
-#define DSAFV2_SBM_BP_CFG_2_ROCEE_REG_0_REG	0x238C
-=======
-#define DSAFV2_SBM_BP_CFG_2_ROCEE_REG_0_REG		 0x238C
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_SBM_FREE_CNT_0_0_REG		0x2010
 #define DSAF_SBM_FREE_CNT_1_0_REG		0x2014
 #define DSAF_SBM_BP_CNT_0_0_REG			0x2018
@@ -299,16 +247,8 @@
 #define DSAF_XOD_ROCEE_RCVIN0_CNT_0_REG		0x3074
 #define DSAF_XOD_ROCEE_RCVIN1_CNT_0_REG		0x3078
 #define DSAF_XOD_FIFO_STATUS_0_REG		0x307C
-<<<<<<< HEAD
 #define DSAF_XOD_XGE_PFC_PRIO_CNT_BASE_REG	0x3A00
 #define DSAF_XOD_XGE_PFC_PRIO_CNT_OFFSET	0x4
-=======
-<<<<<<< HEAD
-#define DSAF_XOD_XGE_PFC_PRIO_CNT_BASE_REG	0x3A00
-#define DSAF_XOD_XGE_PFC_PRIO_CNT_OFFSET	0x4
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 #define DSAF_VOQ_ECC_INVERT_EN_0_REG		0x4004
 #define DSAF_VOQ_SRAM_PKT_NUM_0_REG		0x4008
@@ -360,16 +300,8 @@
 #define DSAF_TBL_LKUP_NUM_I_0_REG		0x50C0
 #define DSAF_TBL_LKUP_NUM_O_0_REG		0x50E0
 #define DSAF_TBL_UCAST_BCAST_MIS_INFO_0_0_REG	0x510C
-<<<<<<< HEAD
 #define DSAF_TBL_TCAM_MATCH_CFG_H_REG		0x5130
 #define DSAF_TBL_TCAM_MATCH_CFG_L_REG		0x5134
-=======
-<<<<<<< HEAD
-#define DSAF_TBL_TCAM_MATCH_CFG_H_REG		0x5130
-#define DSAF_TBL_TCAM_MATCH_CFG_L_REG		0x5134
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 #define DSAF_INODE_FIFO_WL_0_REG		0x6000
 #define DSAF_ONODE_FIFO_WL_0_REG		0x6020
@@ -382,13 +314,6 @@
 #define PPE_COM_INTEN_REG			0x110
 #define PPE_COM_RINT_REG			0x114
 #define PPE_COM_INTSTS_REG			0x118
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-#define PPE_COM_COMMON_CNT_CLR_CE_REG		0x1120
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define PPE_COM_HIS_RX_PKT_QID_DROP_CNT_REG	0x300
 #define PPE_COM_HIS_RX_PKT_QID_OK_CNT_REG	0x600
 #define PPE_COM_HIS_TX_PKT_QID_ERR_CNT_REG	0x900
@@ -496,14 +421,7 @@
 #define RCB_CFG_OVERTIME_REG			0x9300
 #define RCB_CFG_PKTLINE_INT_NUM_REG		0x9304
 #define RCB_CFG_OVERTIME_INT_NUM_REG		0x9308
-<<<<<<< HEAD
 #define RCB_PORT_INT_GAPTIME_REG		0x9400
-=======
-<<<<<<< HEAD
-#define RCB_PORT_INT_GAPTIME_REG		0x9400
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define RCB_PORT_CFG_OVERTIME_REG		0x9430
 
 #define RCB_RING_RX_RING_BASEADDR_L_REG		0x00000
@@ -548,14 +466,7 @@
 
 #define GMAC_DUPLEX_TYPE_REG			0x0008UL
 #define GMAC_FD_FC_TYPE_REG			0x000CUL
-<<<<<<< HEAD
 #define GMAC_TX_WATER_LINE_REG			0x0010UL
-=======
-<<<<<<< HEAD
-#define GMAC_TX_WATER_LINE_REG			0x0010UL
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define GMAC_FC_TX_TIMER_REG			0x001CUL
 #define GMAC_FD_FC_ADDR_LOW_REG			0x0020UL
 #define GMAC_FD_FC_ADDR_HIGH_REG		0x0024UL
@@ -792,14 +703,6 @@
 #define XGMAC_RX_SYMBOLERRPKTS			0x0210
 #define XGMAC_RX_FCSERRPKTS			0x0218
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-#define XGMAC_TRX_CORE_SRST_M			0x2080
-
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_SRAM_INIT_OVER_M 0xff
 #define DSAFV2_SRAM_INIT_OVER_M 0x3ff
 #define DSAF_SRAM_INIT_OVER_S 0
@@ -906,10 +809,6 @@
 #define DSAFV2_SBM_CFG4_RESET_BUF_NUM_NO_PFC_S 9
 #define DSAFV2_SBM_CFG4_RESET_BUF_NUM_NO_PFC_M (((1ULL << 9) - 1) << 9)
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_CHNS_MASK			0x3f000
 #define DSAF_SBM_ROCEE_CFG_CRD_EN_B	2
 #define SRST_TIME_INTERVAL		20
@@ -925,11 +824,6 @@
 #define DSAFV2_SBM_CFG2_PPE_CFG_USEFUL_NUM_S (12)
 #define DSAFV2_SBM_CFG2_PPE_CFG_USEFUL_NUM_M (((1ULL << 6) - 1) << 12)
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define DSAF_TBL_TCAM_ADDR_S 0
 #define DSAF_TBL_TCAM_ADDR_M ((1ULL << 9) - 1)
 
@@ -1008,18 +902,9 @@
 #define PPE_CNT_CLR_CE_B	0
 #define PPE_CNT_CLR_SNAP_EN_B	1
 
-<<<<<<< HEAD
 #define PPE_INT_GAPTIME_B	0
 #define PPE_INT_GAPTIME_M	0x3ff
 
-=======
-<<<<<<< HEAD
-#define PPE_INT_GAPTIME_B	0
-#define PPE_INT_GAPTIME_M	0x3ff
-
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define PPE_COMMON_CNT_CLR_CE_B	0
 #define PPE_COMMON_CNT_CLR_SNAP_EN_B	1
 #define RCB_COM_TSO_MODE_B	0
@@ -1028,18 +913,9 @@
 
 #define GMAC_DUPLEX_TYPE_B 0
 
-<<<<<<< HEAD
 #define GMAC_TX_WATER_LINE_MASK		((1UL << 8) - 1)
 #define GMAC_TX_WATER_LINE_SHIFT	0
 
-=======
-<<<<<<< HEAD
-#define GMAC_TX_WATER_LINE_MASK		((1UL << 8) - 1)
-#define GMAC_TX_WATER_LINE_SHIFT	0
-
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define GMAC_FC_TX_TIMER_S 0
 #define GMAC_FC_TX_TIMER_M 0xffff
 
@@ -1108,20 +984,11 @@
 #define XGMAC_ENABLE_TX_B		0
 #define XGMAC_ENABLE_RX_B		1
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define XGMAC_UNIDIR_EN_B		0
 #define XGMAC_RF_TX_EN_B		1
 #define XGMAC_LF_RF_INSERT_S		2
 #define XGMAC_LF_RF_INSERT_M		(0x3 << XGMAC_LF_RF_INSERT_S)
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define XGMAC_CTL_TX_FCS_B		0
 #define XGMAC_CTL_TX_PAD_B		1
 #define XGMAC_CTL_TX_PREAMBLE_TRANS_B	3
@@ -1151,17 +1018,7 @@
 
 static inline void dsaf_write_reg(void __iomem *base, u32 reg, u32 value)
 {
-<<<<<<< HEAD
 	writel(value, base + reg);
-=======
-<<<<<<< HEAD
-	writel(value, base + reg);
-=======
-	u8 __iomem *reg_addr = ACCESS_ONCE(base);
-
-	writel(value, reg_addr + reg);
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 }
 
 #define dsaf_write_dev(a, reg, value) \
@@ -1169,17 +1026,7 @@ static inline void dsaf_write_reg(void __iomem *base, u32 reg, u32 value)
 
 static inline u32 dsaf_read_reg(u8 __iomem *base, u32 reg)
 {
-<<<<<<< HEAD
 	return readl(base + reg);
-=======
-<<<<<<< HEAD
-	return readl(base + reg);
-=======
-	u8 __iomem *reg_addr = ACCESS_ONCE(base);
-
-	return readl(reg_addr + reg);
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 }
 
 static inline void dsaf_write_syscon(struct regmap *base, u32 reg, u32 value)

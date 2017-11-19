@@ -67,16 +67,8 @@ do { \
 #define AE_IS_VER1(ver) ((ver) == AE_VERSION_1)
 #define AE_NAME_SIZE 16
 
-<<<<<<< HEAD
 #define BD_SIZE_2048_MAX_MTU   6000
 
-=======
-<<<<<<< HEAD
-#define BD_SIZE_2048_MAX_MTU   6000
-
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 /* some said the RX and TX RCB format should not be the same in the future. But
  * it is the same now...
  */
@@ -109,14 +101,7 @@ enum hnae_led_state {
 #define HNS_RX_FLAG_L3ID_IPV6 0x1
 #define HNS_RX_FLAG_L4ID_UDP 0x0
 #define HNS_RX_FLAG_L4ID_TCP 0x1
-<<<<<<< HEAD
 #define HNS_RX_FLAG_L4ID_SCTP 0x3
-=======
-<<<<<<< HEAD
-#define HNS_RX_FLAG_L4ID_SCTP 0x3
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 #define HNS_TXD_ASID_S 0
 #define HNS_TXD_ASID_M (0xff << HNS_TXD_ASID_S)
@@ -180,13 +165,6 @@ enum hnae_led_state {
 #define HNSV2_TXD_IPV6_B   3
 #define HNSV2_TXD_SCTP_B   4
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-#define HNS_RCB_REG_OFFSET 0x10000
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 /* hardware spec ring buffer format */
 struct __packed hnae_desc {
 	__le64 addr;
@@ -296,18 +274,9 @@ struct hnae_ring {
 	/* statistic */
 	struct ring_stats stats;
 
-<<<<<<< HEAD
 	/* ring lock for poll one */
 	spinlock_t lock;
 
-=======
-<<<<<<< HEAD
-	/* ring lock for poll one */
-	spinlock_t lock;
-
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	dma_addr_t desc_dma_addr;
 	u32 buf_size;       /* size for hnae_desc->addr, preset by AE */
 	u16 desc_num;       /* total number of desc */
@@ -400,10 +369,6 @@ enum hnae_port_type {
 	HNAE_PORT_DEBUG
 };
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 /* mac media type */
 enum hnae_media_type {
 	HNAE_MEDIA_TYPE_UNKNOWN = 0,
@@ -412,11 +377,6 @@ enum hnae_media_type {
 	HNAE_MEDIA_TYPE_BACKPLANE,
 };
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 /* This struct defines the operation on the handle.
  *
  * get_handle(): (mandatory)
@@ -472,10 +432,6 @@ enum hnae_media_type {
  *   get mac address
  * set_mac_addr()
  *   set mac address
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
  * clr_mc_addr()
  *   clear mcast tcam table
  * set_mc_addr()
@@ -484,13 +440,6 @@ enum hnae_media_type {
  *   add ucast address
  * rm_uc_addr()
  *   remove ucast address
-<<<<<<< HEAD
-=======
-=======
- * set_mc_addr()
- *   set multicast mode
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
  * set_mtu()
  *   set mtu
  * update_stats()
@@ -525,13 +474,6 @@ struct hnae_ae_ops {
 	int (*get_info)(struct hnae_handle *handle,
 			u8 *auto_neg, u16 *speed, u8 *duplex);
 	void (*toggle_ring_irq)(struct hnae_ring *ring, u32 val);
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-	void (*toggle_queue_status)(struct hnae_queue *queue, u32 val);
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	void (*adjust_link)(struct hnae_handle *handle, int speed, int duplex);
 	int (*set_loopback)(struct hnae_handle *handle,
 			    enum hnae_loop loop_mode, int en);
@@ -545,10 +487,6 @@ struct hnae_ae_ops {
 			      u32 auto_neg, u32 rx_en, u32 tx_en);
 	void (*get_coalesce_usecs)(struct hnae_handle *handle,
 				   u32 *tx_usecs, u32 *rx_usecs);
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	void (*get_max_coalesced_frames)(struct hnae_handle *handle,
 					 u32 *tx_frames, u32 *rx_frames);
 	int (*set_coalesce_usecs)(struct hnae_handle *handle, u32 timeout);
@@ -567,19 +505,6 @@ struct hnae_ae_ops {
 	int (*rm_uc_addr)(struct hnae_handle *handle,
 			  const unsigned char *addr);
 	int (*clr_mc_addr)(struct hnae_handle *handle);
-<<<<<<< HEAD
-=======
-=======
-	void (*get_rx_max_coalesced_frames)(struct hnae_handle *handle,
-					    u32 *tx_frames, u32 *rx_frames);
-	int (*set_coalesce_usecs)(struct hnae_handle *handle, u32 timeout);
-	int (*set_coalesce_frames)(struct hnae_handle *handle,
-				   u32 coalesce_frames);
-	void (*set_promisc_mode)(struct hnae_handle *handle, u32 en);
-	int (*get_mac_addr)(struct hnae_handle *handle, void **p);
-	int (*set_mac_addr)(struct hnae_handle *handle, void *p);
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	int (*set_mc_addr)(struct hnae_handle *handle, void *addr);
 	int (*set_mtu)(struct hnae_handle *handle, int new_mtu);
 	void (*set_tso_stats)(struct hnae_handle *handle, int enable);
@@ -617,15 +542,7 @@ struct hnae_ae_dev {
 struct hnae_handle {
 	struct device *owner_dev; /* the device which make use of this handle */
 	struct hnae_ae_dev *dev;  /* the device who provides this handle */
-<<<<<<< HEAD
 	struct phy_device *phy_dev;
-=======
-<<<<<<< HEAD
-	struct phy_device *phy_dev;
-=======
-	struct fwnode_handle *phy_fwnode;
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	phy_interface_t phy_if;
 	u32 if_support;
 	int q_num;
@@ -633,14 +550,7 @@ struct hnae_handle {
 	u32 eport_id;
 	u32 dport_id;	/* v2 tx bd should fill the dport_id */
 	enum hnae_port_type port_type;
-<<<<<<< HEAD
 	enum hnae_media_type media_type;
-=======
-<<<<<<< HEAD
-	enum hnae_media_type media_type;
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	struct list_head node;    /* list to hnae_ae_dev->handle_list */
 	struct hnae_buf_ops *bops; /* operation for the buffer */
 	struct hnae_queue **qs;  /* array base of all queues */
@@ -697,15 +607,7 @@ static inline int hnae_alloc_buffer_attach(struct hnae_ring *ring, int i)
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
 	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma);
-=======
-<<<<<<< HEAD
-	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma);
-=======
-	ring->desc[i].addr = (__le64)ring->desc_cb[i].dma;
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 
 	return 0;
 }
@@ -736,38 +638,18 @@ static inline void hnae_replace_buffer(struct hnae_ring *ring, int i,
 
 	bops->unmap_buffer(ring, &ring->desc_cb[i]);
 	ring->desc_cb[i] = *res_cb;
-<<<<<<< HEAD
 	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma);
-=======
-<<<<<<< HEAD
-	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma);
-=======
-	ring->desc[i].addr = (__le64)ring->desc_cb[i].dma;
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 	ring->desc[i].rx.ipoff_bnum_pid_flag = 0;
 }
 
 static inline void hnae_reuse_buffer(struct hnae_ring *ring, int i)
 {
 	ring->desc_cb[i].reuse_flag = 0;
-<<<<<<< HEAD
 	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma
-=======
-<<<<<<< HEAD
-	ring->desc[i].addr = cpu_to_le64(ring->desc_cb[i].dma
-=======
-	ring->desc[i].addr = (__le64)(ring->desc_cb[i].dma
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 		+ ring->desc_cb[i].page_offset);
 	ring->desc[i].rx.ipoff_bnum_pid_flag = 0;
 }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 /* when reinit buffer size, we should reinit buffer description */
 static inline void hnae_reinit_all_ring_desc(struct hnae_handle *h)
 {
@@ -803,11 +685,6 @@ static inline void hnae_reinit_all_ring_page_off(struct hnae_handle *h)
 	wmb();	/* commit all data before submit */
 }
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 4be7dceba547a4565d7c15821761f96229c4a5b1
->>>>>>> 54b7162dc6e077ea05e62b15aed0a6ed2bf7e28d
 #define hnae_set_field(origin, mask, shift, val) \
 	do { \
 		(origin) &= (~(mask)); \
