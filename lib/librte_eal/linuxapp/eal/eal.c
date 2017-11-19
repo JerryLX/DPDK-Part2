@@ -749,12 +749,15 @@ static void rte_eal_init_alert(const char *msg)
 int
 rte_eal_init(int argc, char **argv)
 {
+	printf("eal_init");
+	
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
 	const char *logid;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	
 
 	/* checks if the machine is adequate */
 	if (!rte_cpu_is_supported()) {
@@ -769,6 +772,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+    
 	logid = strrchr(argv[0], '/');
 	logid = strdup(logid ? logid + 1: argv[0]);
 
@@ -889,6 +893,7 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
 		return -1;
 	}
+	
 
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices\n");

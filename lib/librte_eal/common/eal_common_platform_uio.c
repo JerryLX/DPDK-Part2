@@ -9,6 +9,7 @@
 #include <rte_tailq.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_platform.h>
 
 #include "eal_private.h"
 
@@ -86,22 +87,32 @@ platform_uio_map_resource(struct rte_platform_device *dev)
     dev->intr_handle.uio_cfg_fd = -1;
     dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 
+    printf("enter map resource\n");
     if(rte_eal_process_type() != RTE_PROC_PRIMARY)
         return platform_uio_map_secondary(dev);
 
     ret = platform_uio_alloc_resource(dev, &uio_res);
-    if (ret)
+    if (ret){
+        printf("alloc error\n");
         return ret;
-
+    }
 	for (i = 0; i != PLATFORM_MAX_RESOURCE; i++) {
 		phaddr = dev->mem_resource[i].phys_addr;
 		if(!phaddr) continue;
-        
+        printf("%#lx\n", phaddr);
+	} // for debug by mqc
+	
+	for (i = 0; i != PLATFORM_MAX_RESOURCE; i++) {
+		phaddr = dev->mem_resource[i].phys_addr;
+		if(!phaddr) continue;
+        //printf("%#lx\n", phaddr);
         ret = platform_uio_map_resource_by_index(dev, i,
-				uio_res, map_idx);
-		if (ret)
-			goto error;
-
+			uio_res, map_idx);
+		
+        if (ret){
+			printf("map error\n");
+            goto error;
+        }
 		map_idx++;
 	}
 

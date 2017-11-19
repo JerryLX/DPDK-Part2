@@ -49,7 +49,7 @@ extern "C" {
  ***/
 
 #include <stdint.h>
-
+#include <stdio.h>
 /*
  * Application Programmer's Interface (API)
  *
@@ -220,29 +220,127 @@ struct rte_meter_trtcm {
 	uint64_t pir_bytes_per_period; /* Number of bytes to add to P token bucket on each update */
 };
 
+struct rte_meter_srtcm_color_res {
+    uint64_t green;
+    uint64_t yellow;
+    uint64_t red;
+
+};
+
+
+
+static inline struct rte_meter_srtcm_color_res
+rte_meter_srtcm_color_blind_burst_check(struct rte_meter_srtcm *m,
+	uint64_t time,
+	uint32_t pkt_len, uint32_t burst)
+{
+//    if(1)
+//        return e_RTE_METER_GREEN;
+    uint64_t time_diff, n_periods, tc, te;
+    struct rte_meter_srtcm_color_res res=
+    {
+     .green = 0,
+     .yellow=0,
+     .red=0,
+    };
+//    printf("%lu ,%lu, %lu\n",res.green, res.yellow, res.red);
+	/* Bucket update */
+	time_diff = time - m->time;
+	n_periods = time_diff / m->cir_period;
+	m->time += n_periods * m->cir_period;
+//    if(1)
+//       return e_RTE_METER_GREEN;
+    tc = m->tc + n_periods * m->cir_bytes_per_period;
+    if(tc > m->cbs)
+       tc = m->cbs;
+    
+    te = m->te + n_periods * m->cir_bytes_per_period;
+    if(te > m->ebs)
+       te = m->ebs;
+
+//    if(1)
+//        return e_RTE_METER_GREEN;
+/*	tc = m->tc + n_periods * m->cir_bytes_per_period;
+
+	te = m->te;
+	if (tc > m->cbs){
+        te+=(tc-m->cbs);
+	    if(te>m->ebs)
+            te=m->ebs;
+        tc=m->cbs;
+    }
+*/	/* Color logic */
+
+    uint64_t count;
+
+	if (tc >= pkt_len) {
+        count = tc / pkt_len;
+        m->te = te;
+        if(count > burst){
+            res.green += burst;
+            m->tc = tc - pkt_len * burst;
+            return res;
+        }
+        res.green +=count;
+        tc -= pkt_len * count;
+        burst -=count;
+	}
+
+	if (te >= pkt_len) {
+        count = te / pkt_len;
+        m->tc = tc;
+		if(count > burst) {
+            res.yellow+=burst;
+            m->te = te-pkt_len * burst;
+            return res;
+        }
+        res.yellow +=count;
+        te -= pkt_len * count;
+        burst -=count;
+	}
+
+	m->te = te;
+    res.red +=burst;
+	return res;
+
+}
+
+
 static inline enum rte_meter_color
 rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 	uint64_t time,
 	uint32_t pkt_len)
 {
-	uint64_t time_diff, n_periods, tc, te;
+///    if(1)
+//        return e_RTE_METER_GREEN;
+    uint64_t time_diff, n_periods, tc, te;
 
 	/* Bucket update */
 	time_diff = time - m->time;
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
+//    if(1)
+//       return e_RTE_METER_GREEN;
+    tc = m->tc + n_periods * m->cir_bytes_per_period;
+    if(tc > m->cbs)
+       tc = m->cbs;
+    
+    te = m->te + n_periods * m->cir_bytes_per_period;
+    if(te > m->ebs)
+       te = m->ebs;
 
-	/* Put the tokens overflowing from tc into te bucket */
-	tc = m->tc + n_periods * m->cir_bytes_per_period;
+//    if(1)
+//        return e_RTE_METER_GREEN;
+/*	tc = m->tc + n_periods * m->cir_bytes_per_period;
+
 	te = m->te;
-	if (tc > m->cbs) {
-		te += (tc - m->cbs);
-		if (te > m->ebs)
-			te = m->ebs;
-		tc = m->cbs;
-	}
-
-	/* Color logic */
+	if (tc > m->cbs){
+        te+=(tc-m->cbs);
+	    if(te>m->ebs)
+            te=m->ebs;
+        tc=m->cbs;
+    }
+*/	/* Color logic */
 	if (tc >= pkt_len) {
 		m->tc = tc - pkt_len;
 		m->te = te;
@@ -273,15 +371,13 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
 
-	/* Put the tokens overflowing from tc into te bucket */
 	tc = m->tc + n_periods * m->cir_bytes_per_period;
-	te = m->te;
-	if (tc > m->cbs) {
-		te += (tc - m->cbs);
-		if (te > m->ebs)
-			te = m->ebs;
+	if (tc > m->cbs)
 		tc = m->cbs;
-	}
+
+	te = m->te + n_periods * m->cir_bytes_per_period;
+	if (te > m->ebs)
+		te = m->ebs;
 
 	/* Color logic */
 	if ((pkt_color == e_RTE_METER_GREEN) && (tc >= pkt_len)) {

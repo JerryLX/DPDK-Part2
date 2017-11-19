@@ -455,7 +455,7 @@ rte_pci_scan(void)
 	DIR *dir;
 	char dirname[PATH_MAX];
 	struct rte_pci_addr addr;
-
+    printf("rte_pci_scan\n"); //for debug
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)
 		return 0;
@@ -466,7 +466,6 @@ rte_pci_scan(void)
 			__func__, strerror(errno));
 		return -1;
 	}
-
 	while ((e = readdir(dir)) != NULL) {
 		if (e->d_name[0] == '.')
 			continue;

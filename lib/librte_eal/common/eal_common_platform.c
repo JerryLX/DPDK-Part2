@@ -70,6 +70,7 @@ static struct rte_platform_driver *rte_check_platform_drv_is_reg(const char *drv
 
 void rte_platform_register(struct rte_platform_driver *driver)
 {
+	printf("rte_platform_register: %s\n", driver->name); // for debug by mqc;
     if(!driver) {
         RTE_LOG(ERR,EAL,"driver is null!\n");
         return;
@@ -93,8 +94,8 @@ void rte_platform_register(struct rte_platform_driver *driver)
 
 void rte_platform_unregister(struct rte_platform_driver *driver)
 {
-//    struct rte_platform_driver *drv_temp;
-//    int len;
+    struct rte_platform_driver *drv_temp;
+    int len;
 
     if(!driver){
         RTE_LOG(ERR,EAL,"driver is null\n");
@@ -102,18 +103,18 @@ void rte_platform_unregister(struct rte_platform_driver *driver)
     }
 	TAILQ_REMOVE(&rte_platform_bus.driver_list, driver, next);
 	driver->bus = NULL;
-//    TAILQ_FOREACH (drv_temp, &platform_driver_list, next)
-//    {
-//        RTE_LOG(ERR,EAL,"%s",drv_temp->name);
-//        if (strlen(drv_temp->name) == strlen(driver->name)) {
-//            len = strlen(driver->name);
-//            if (strncmp(drv_temp->name, driver->name,len) == 0) {
-//                TAILQ_REMOVE (&platform_driver_list,drv_temp);
-//                return;
-//            }
-//        }
-//    }  
-//    RTE_LOG(ERR,EAL,"dev is not found!\n");
+    TAILQ_FOREACH (drv_temp, &rte_platform_bus.driver_list, next)
+    {
+        RTE_LOG(ERR,EAL,"%s",drv_temp->name);
+        if (strlen(drv_temp->name) == strlen(driver->name)) {
+            len = strlen(driver->name);
+            if (strncmp(drv_temp->name, driver->name,len) == 0) {
+                TAILQ_REMOVE (&rte_platform_bus.driver_list,drv_temp, next);
+                return;
+            }
+        }
+    }  
+    RTE_LOG(ERR,EAL,"dev is not found!\n");
 
 }
 
@@ -150,6 +151,28 @@ platform_unmap_resource(void *requested_addr, size_t size)
          RTE_LOG(DEBUG, EAL, "  Platform memory unmapped at %p\n",
               requested_addr);
 }
+
+/*
+// merge into probe one drive
+static int
+rte_platform_match(const struct rte_platform_driver *platform_drv,
+	      const struct rte_platform_device *platform_dev)
+{
+	const struct rte_platform_id *id_table;
+    printf("rte_platform_match\n"); // for debug
+	for (id_table = platform_drv->id_table; id_table->name != 0;
+	     id_table++) {
+		 //check if device's identifiers match the driver's ones 
+		if (id_table->name != platform_dev->name)
+			continue;
+
+		return 1;
+	}
+
+	return 0;
+}
+#endif
+*/
 
 /*
 struct rte_platform_data *rte_platform_check_name_is_alloc(char *name)
@@ -229,8 +252,8 @@ void rte_eal_platform_data_free(char *name)
  * If name match, call the devinit() function of the
  * driver.
  */
-static int
-rte_eal_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_platform_device *dev)
+ int
+rte_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_platform_device *dev)
 {
 	int ret;
     unsigned int len;
@@ -247,20 +270,25 @@ rte_eal_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_pla
             }
         }
         else if(len != strlen(dev->name) ||
-                strncmp(id->name, dev->name, len)) 
+                strncmp(id->name, dev->name, len)){
             continue;
+        
+        }
 
 		if (dr->drv_flags & RTE_PLATFORM_DRV_NEED_MAPPING) {
 			/* map resources for devices that use plf_uio */
 			
             ret = rte_platform_map_device(dev);
 
-			if (ret != 0)
-				return ret;
+			if (ret != 0){
+				printf("mapping error!\n");
+                return ret;
+            }
 		}
+        printf("goto probe\n");
 		/* reference driver structure */
 		dev->driver = dr;
-        dev->device.driver = &dr->driver;
+        dev->device.driver = &dr->driver;   
 		
 		/* call the driver probe() function */
 		ret = dr->probe(dr, dev);
@@ -269,7 +297,7 @@ rte_eal_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_pla
 		     if (dr->drv_flags & RTE_PLATFORM_DRV_NEED_MAPPING)
 			     rte_platform_unmap_device(dev);
         }
-		return ret
+		return ret;
 	}
 	/* return positive value if driver doesn't support this device */
 	return 1;
@@ -279,12 +307,14 @@ rte_eal_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_pla
  * registered driver for the given device. Return -1 if initialization
  * failed, return 1 if no driver is found for this device.
  */
-static int
-platform_probe_all_drivers(struct rte_platform_device *dev)
+ int
+rte_platform_probe_all_drivers(struct rte_platform_device *dev)
 {
 	struct rte_platform_driver *dr = NULL;
 	int rc = 0;
 
+	printf("rte_platform_probe_all_drivers\n");  // for debug by mqc
+	
 	if (dev == NULL)
 		return -1;
 
@@ -294,8 +324,10 @@ platform_probe_all_drivers(struct rte_platform_device *dev)
 	
 	
 	TAILQ_FOREACH(dr, &rte_platform_bus.driver_list, next) {
-        //for debug
-        RTE_LOG(INFO, EAL, "probing driver: %s\n", dr->name);
+        //for debug by mqc
+
+		printf(" probing driver: %s\n", dr->name);
+        //RTE_LOG(INFO, EAL, "probing driver: %s\n", dr->name);
 		rc = rte_platform_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -319,15 +351,16 @@ rte_eal_platform_probe(void)
 {
 	struct rte_platform_device *dev = NULL;
 	int ret = 0;
-
-	TAILQ_FOREACH(dev, &rte_platform_bus.driver_list, next) {
-		printf("probe!\n");
-        ret = platform_probe_all_drivers(dev);
+    printf("rte_platform_probe\n"); //for debug by mqc;
+	
+	TAILQ_FOREACH(dev, &rte_platform_bus.device_list, next) {
+		printf("probe %s\n", dev->name);
+        ret = rte_platform_probe_all_drivers(dev);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Requested device %s" 
 				 " cannot be used\n", dev->name);
 	}
-
+    
 	return 0;
 }
 
@@ -356,7 +389,7 @@ rte_platform_remove_device(struct rte_platform_device *platform_dev)
 struct rte_platform_bus rte_platform_bus = {
 	.bus = {
 		.scan = rte_platform_scan,
-		.probe = rte_platform_probe,
+		.probe = rte_eal_platform_probe,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_platform_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_platform_bus.driver_list),

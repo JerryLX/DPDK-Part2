@@ -31,12 +31,12 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += proc_info
-DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += pdump
+#DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
+#DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += proc_info
+#DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += pdump
 
-ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
-DIRS-$(CONFIG_RTE_APP_CRYPTO_PERF) += test-crypto-perf
-endif
+#ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+#DIRS-$(CONFIG_RTE_APP_CRYPTO_PERF) += test-crypto-perf
+#endif
 
 include $(RTE_SDK)/mk/rte.subdir.mk

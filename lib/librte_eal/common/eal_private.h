@@ -37,6 +37,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <rte_pci.h>
+#include <rte_platform.h>
 
 /**
  * Initialize the memzone subsystem (private to eal).
@@ -337,5 +338,84 @@ int rte_eal_hugepage_attach(void);
  * physical addresses when running as a privileged user.
  */
 bool rte_eal_using_phys_addrs(void);
+
+
+struct rte_platform_device;
+struct rte_platform_driver;
+
+/**
+ * Unbind kernel driver for this device
+ *
+ * This function is private to EAL.
+ *
+ * @return
+ *   0 on success, negative on error
+ */
+int platform_unbind_kernel_driver(struct rte_platform_device *dev);
+
+/**
+ * Map the Platform resource of a Platform device in virtual memory
+ *
+ * This function is private to EAL.
+ *
+ * @return
+ *   0 on success, negative on error
+ */
+int platform_uio_map_resource(struct rte_platform_device *dev);
+
+/**
+ * Unmap the Platform resource of a Platform device
+ *
+ * This function is private to EAL.
+ */
+void platform_uio_unmap_resource(struct rte_platform_device *dev);
+
+/**
+ * Allocate uio resource for Platform device
+ *
+ * This function is private to EAL.
+ *
+ * @param dev
+ *   Platform device to allocate uio resource
+ * @param uio_res
+ *   Pointer to uio resource.
+ *   If the function returns 0, the pointer will be filled.
+ * @return
+ *   0 on success, negative on error
+ */
+int platform_uio_alloc_resource(struct rte_platform_device *dev,
+		struct mapped_platform_resource **uio_res);
+
+/**
+ * Free uio resource for Platform device
+ *
+ * This function is private to EAL.
+ *
+ * @param dev
+ *   Platform device to free uio resource
+ * @param uio_res
+ *   Pointer to uio resource.
+ */
+void platform_uio_free_resource(struct rte_platform_device *dev,
+		struct mapped_platform_resource *uio_res);
+
+/**
+ * Map device memory to uio resource
+ *
+ * This function is private to EAL.
+ *
+ * @param dev
+ *   Platform device that has memory information.
+ * @param res_idx
+ *   Memory resource index of the Platform device.
+ * @param uio_res
+ *  uio resource that will keep mapping information.
+ * @param map_idx
+ *   Mapping information index of the uio resource.
+ * @return
+ *   0 on success, negative on error
+ */
+int platform_uio_map_resource_by_index(struct rte_platform_device *dev, int res_idx,
+		struct mapped_platform_resource *uio_res, int map_idx);
 
 #endif /* _EAL_PRIVATE_H_ */

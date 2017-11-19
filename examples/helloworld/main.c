@@ -61,6 +61,7 @@ main(int argc, char **argv)
 	unsigned lcore_id;
 
 	ret = rte_eal_init(argc, argv);
+    printf("hello!\n");	
 	if (ret < 0)
 		rte_panic("Cannot init EAL\n");
 

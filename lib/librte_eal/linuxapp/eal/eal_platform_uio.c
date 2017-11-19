@@ -233,7 +233,7 @@ platform_uio_alloc_resource(struct rte_platform_device *dev,
 {
     char devname[PATH_MAX]; /* contains the /dev/uioX */
     int uio_num;
-printf("alloc!\n");   
+    printf("alloc!\n");   
     /* find uio resource */
     uio_num = dev->uio_num;
     if(uio_num < 0){
@@ -284,7 +284,7 @@ printf("alloc!\n");
     }
 
     snprintf((*uio_res)->path, sizeof((*uio_res)->path), "%s", devname);
-    //memcpy((*uio_res)->name, dev->name, sizeof((*uio_res)->name));
+    memcpy((*uio_res)->name, dev->name, sizeof((*uio_res)->name));
     strcpy((*uio_res)->name, dev->name);
     return 0;
 error:
@@ -332,15 +332,22 @@ platform_uio_map_resource_by_index(struct rte_platform_device *dev, int res_idx,
 		platform_map_addr = platform_find_max_end_va();
 
     printf("dev name:%s, mapidx:%d\n",devname,map_idx);
-    
-//    mapaddr = platform_map_resource(platform_map_addr, fd, map_idx*getpagesize(),
-//			(size_t)dev->mem_resource[res_idx].len, 0);
-    	mapaddr = (void *)mmap(NULL, (size_t)dev->mem_resource[res_idx].len,
-                           PROT_READ|PROT_WRITE,MAP_SHARED,fd, map_idx*getpagesize());
+	
+	//printf("%p\n", platform_map_addr);
+	
+   //    mapaddr = platform_map_resource(platform_map_addr, fd, uio_res->offset*getpagesize(),
+   //   		(size_t)dev->mem_resource[res_idx].len, 0);
+    //   uio_res->offset+=(dev->mem_resource[res_idx].len+getpagesize()-1)/getpagesize();
+       mapaddr = platform_map_resource(platform_map_addr, fd, map_idx*getpagesize(),
+      		(size_t)dev->mem_resource[res_idx].len, 0);
+    //	mapaddr = (void *)mmap(NULL, (size_t)dev->mem_resource[res_idx].len,
+    //                       PROT_READ|PROT_WRITE,MAP_SHARED,fd, 7*map_idx*getpagesize());
     close(fd);
 	if (mapaddr == MAP_FAILED)
+	{
+		printf("mapaddr = MAP_FAILED\n");
 		goto error;
-
+    }
 	platform_map_addr = RTE_PTR_ADD(mapaddr,
 			(size_t)dev->mem_resource[res_idx].len);
 

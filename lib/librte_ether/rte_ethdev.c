@@ -176,9 +176,9 @@ struct rte_eth_dev *
 rte_eth_dev_allocated(const char *name)
 {
 	unsigned i;
-
+    
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if ((rte_eth_devices[i].state == RTE_ETH_DEV_ATTACHED) &&
+        if ((rte_eth_devices[i].state == RTE_ETH_DEV_ATTACHED) &&
 		    strcmp(rte_eth_devices[i].data->name, name) == 0)
 			return &rte_eth_devices[i];
 	}
@@ -203,7 +203,9 @@ eth_dev_get(uint8_t port_id)
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 
 	eth_dev->data = &rte_eth_dev_data[port_id];
-	eth_dev->state = RTE_ETH_DEV_ATTACHED;
+	eth_dev->data->name[0] = 'c';
+	eth_dev->data->name[1] = '\0';
+    eth_dev->state = RTE_ETH_DEV_ATTACHED;
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	eth_dev_last_created_port = port_id;
@@ -217,16 +219,16 @@ rte_eth_dev_allocate(const char *name)
 {
 	uint8_t port_id;
 	struct rte_eth_dev *eth_dev;
-
-	port_id = rte_eth_dev_find_free_port();
+	printf("eth alloc:%s\n",name);
+    port_id = rte_eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
 		RTE_PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
 		return NULL;
 	}
 
-	if (rte_eth_dev_data == NULL)
-		rte_eth_dev_data_alloc();
-
+	if (rte_eth_dev_data == NULL){
+        rte_eth_dev_data_alloc();
+    }
 	if (rte_eth_dev_allocated(name) != NULL) {
 		RTE_PMD_DEBUG_TRACE("Ethernet Device with name %s already allocated!\n",
 				name);
@@ -449,6 +451,7 @@ rte_eth_dev_detach(uint8_t port_id, char *name)
 err:
 	return ret;
 }
+
 
 static int
 rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
@@ -900,11 +903,11 @@ rte_eth_dev_start(uint8_t port_id)
 	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
-
+	
 	dev = &rte_eth_devices[port_id];
-
+	
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_start, -ENOTSUP);
-
+	
 	if (dev->data->dev_started != 0) {
 		RTE_PMD_DEBUG_TRACE("Device with port_id=%" PRIu8
 			" already started\n",
@@ -913,13 +916,17 @@ rte_eth_dev_start(uint8_t port_id)
 	}
 
 	diag = (*dev->dev_ops->dev_start)(dev);
+
 	if (diag == 0)
 		dev->data->dev_started = 1;
 	else
 		return diag;
 
+	printf("rte_eth_dev_config_restore  %d\n", port_id);
+	
 	rte_eth_dev_config_restore(port_id);
 
+	printf("restore complete\n");
 	if (dev->data->dev_conf.intr_conf.lsc == 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->link_update, -ENOTSUP);
 		(*dev->dev_ops->link_update)(dev, 0);

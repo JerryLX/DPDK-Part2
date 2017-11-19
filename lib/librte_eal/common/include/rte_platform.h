@@ -68,7 +68,7 @@ const char *platform_get_sysfs_path(void);
  */
 struct rte_platform_device {
     TAILQ_ENTRY(rte_platform_device) next; /**< Next probed UIO device. */
-
+    struct rte_device device;               /**< Inherit core device */
     char *name;      /**< device name. */
     int uio_num;     /**< uio device number */
     /**< UIO Memory Resource. */
@@ -79,6 +79,12 @@ struct rte_platform_device {
     int                          uio_fd;
     int                          numa_node;   /**< NUMA node connection */
 };
+
+/**
+ * @internal
+ * Helper macro for drivers that need to convert to struct rte_platform_device.
+ */
+#define RTE_DEV_TO_PLATFORM(ptr) container_of(ptr, struct rte_platform_device, device)
 
 /**
  * Initialisation function for the driver called during platform probing.
@@ -113,6 +119,9 @@ struct mapped_platform_resource {
     char path[PATH_MAX];
     int nb_maps;
     struct platform_map maps[PLATFORM_MAX_RESOURCE];
+    
+    int offset;
+
 };
 
 /** mapped platform device list */
@@ -130,11 +139,11 @@ struct rte_platform_id {
  */
 struct rte_platform_driver {
     TAILQ_ENTRY(rte_platform_driver) next;        /**< Next in list. */
-    
+    const char                 *name;                      /**< Driver name. */
 	struct rte_driver driver;               /**< Inherit core driver. */
 	struct rte_platform_bus *bus;                /**< PCI bus reference. */
 	platform_probe_t *probe;                     /**< Device Probe function. */
-	flatform_remove_t *remove;                   /**< Device Remove function. */
+	platform_remove_t *remove;                   /**< Device Remove function. */
 	uint32_t drv_flags;                              /**< Flags contolling handling of device. */
 
     const struct rte_platform_id *id_table;          /**< ID table. */
@@ -145,8 +154,8 @@ struct rte_platform_driver {
  */
 struct rte_platform_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
-	struct rte_platform_device_list device_list;  /**< List of Platform devices */
-	struct rte_platform_driver_list driver_list;  /**< List of Platform drivers */
+	struct platform_device_list device_list;  /**< List of Platform devices */
+	struct platform_driver_list driver_list;  /**< List of Platform drivers */
 };
 
 
@@ -215,6 +224,10 @@ int rte_platform_scan(void);
  */
 int rte_platform_map_device(struct rte_platform_device *dev);
 
+
+
+void rte_platform_unmap_device(struct rte_platform_device *dev);
+
 /**
  * @internal
  * Map a particular resource from a file.
@@ -243,7 +256,7 @@ void platform_unmap_resource(void *requested_addr, size_t size);
  * 
  * @author lixu
  */
-int rte_platform_probe(void);
+int rte_eal_platform_probe(void);
 
 /**
  * Register a Platform driver.
@@ -255,6 +268,18 @@ int rte_platform_probe(void);
  * @author lixu
  */
 void rte_platform_register(struct rte_platform_driver *driver);
+
+/** Helper for PLATFORM device registration from driver (eth, crypto) instance */
+#define RTE_PMD_REGISTER_PLATFORM(nm, platform_drv) \
+RTE_INIT(platforminitfn_ ##nm); \
+static void platforminitfn_ ##nm(void) \
+{\
+	printf("RTE_PMD_REGISTER_PLATFORM!!!!!!!!!!!!!!\n");\
+	(platform_drv).driver.name = RTE_STR(nm);\
+	printf("driver name: %s", RTE_STR(nm)); \
+	rte_platform_register(&platform_drv); \
+} \
+RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 /**
  * Unregister a Platform UIO driver.
@@ -297,6 +322,38 @@ void rte_platform_unregister(struct rte_platform_driver *driver);
  */
 //void rte_eal_platform_dev_data_free(char *name);
 
+
+
+/*
+ * If name match, call the devinit() function of the
+ * driver.
+ */
+ int
+rte_platform_probe_one_driver(struct rte_platform_driver *dr, struct rte_platform_device *dev);
+
+
+/*
+ * If name match, call the devinit() function of all
+ * registered driver for the given device. Return -1 if initialization
+ * failed, return 1 if no driver is found for this device.
+ */
+ int
+rte_platform_probe_all_drivers(struct rte_platform_device *dev);
+
+
+/* Add a device to Platform bus */
+void
+rte_platform_add_device(struct rte_platform_device *platform_dev);
+
+/* Insert a device into a predefined position in Platform bus */
+void
+rte_platform_insert_device(struct rte_platform_device *exist_platform_dev,
+		      struct rte_platform_device *new_platform_dev);
+
+
+/* Remove a device from Platform bus */
+void
+rte_platform_remove_device(struct rte_platform_device *platform_dev);
 
 #ifdef __cplusplus    
 }

@@ -96,10 +96,12 @@ int
 rte_platform_map_device(struct rte_platform_device *dev)
 {
     int ret = -1;
-
+    printf("enter map device\n");
+    printf("%d\n",dev->kdrv);
 	switch (dev->kdrv) {
     case RTE_KDRV_HNS_UIO:
     case RTE_KDRV_PLF_UIO:
+        
         ret = platform_uio_map_resource(dev);
         break;
     default:
@@ -109,6 +111,23 @@ rte_platform_map_device(struct rte_platform_device *dev)
 		break;
     }
     return ret;
+}
+
+/* Unmap platform device */
+void
+rte_platform_unmap_device(struct rte_platform_device *dev)
+{
+	switch (dev->kdrv) {
+    case RTE_KDRV_HNS_UIO:
+    case RTE_KDRV_PLF_UIO:
+        platform_uio_unmap_resource(dev);
+        break;
+    default:
+		RTE_LOG(DEBUG, EAL,
+			"  Not managed by a supported kernel driver, skipped\n");
+		break;
+    }
+	return;
 }
 
 
@@ -157,26 +176,29 @@ platform_uio_parse_map(struct rte_platform_device *dev,
 {
     char dirname[PATH_MAX]; /* contains the /.../maps */
     char child_dir[PATH_MAX];
-    DIR *dir;
-    struct dirent *file;
     int index = 0;
     
+    struct dirent **namelist;
+    int n,i;
+
     snprintf(dirname, sizeof(dirname), "%s/%s", filename, "maps");
-    
-    dir = opendir(dirname);
-    if(!dir) {
+
+    n = scandir(dirname,&namelist,NULL,alphasort);
+    if(n == -1) {
         RTE_LOG(ERR, EAL, "open dir %s failed!\n", dirname);
         return -1;
     }
-
-    while ((file = readdir(dir))!=NULL){
-        if (strncmp(file->d_name, "map", 3) != 0)
+    for(i=0;i<n;i++){
+        printf("%s\n",namelist[i]->d_name);
+        if (strncmp(namelist[i]->d_name, "map", 3) != 0)
             continue;
-        snprintf(child_dir, sizeof(child_dir), "%s/%s", dirname, file->d_name);
+        snprintf(child_dir, sizeof(child_dir), "%s/%s", dirname, namelist[i]->d_name);
         if(platform_uio_parse_one_map(dev,index,child_dir))
             return -1;
         index++;
+        free(namelist[i]);
     }
+
     return 0;
 }
 
@@ -215,8 +237,10 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 
 	/* parse driver */
 	snprintf(filename, sizeof(filename), "%s/driver", dirname);
-	ret = platform_get_kernel_driver_by_path(filename, driver);
-	if (ret < 0) {
+	printf("filename:%s\n",filename);
+    ret = platform_get_kernel_driver_by_path(filename, driver);
+	printf("driver:%s\n",driver);
+    if (ret < 0) {
 		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
 		free(dev);
 		return -1;
@@ -236,13 +260,13 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
        dev->kdrv = RTE_KDRV_NONE;
 
 	/* device is valid, add in list (sorted) */
-	if (TAILQ_EMPTY(&platform_device_list)) {
-		TAILQ_INSERT_TAIL(&platform_device_list, dev, next);
+	if (TAILQ_EMPTY(&rte_platform_bus.device_list)) {
+		TAILQ_INSERT_TAIL(&rte_platform_bus.device_list, dev, next);
 	} else {
 		struct rte_platform_device *dev2;
 		int ret;
 
-		TAILQ_FOREACH(dev2, &platform_device_list, next) {
+		TAILQ_FOREACH(dev2, &rte_platform_bus.device_list, next) {
 			ret = rte_eal_compare_platform_name(dev, dev2);
 			if (ret != 0)
 				continue;
@@ -256,7 +280,7 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 			}
 		}
         
-		TAILQ_INSERT_TAIL(&platform_device_list, dev, next);
+		TAILQ_INSERT_TAIL(&rte_platform_bus.device_list, dev, next);
 	}
 
 	return 0;
@@ -350,8 +374,7 @@ rte_platform_scan(void)
 
         snprintf(devname, sizeof(devname), "%s", e->d_name);
 
-        //for debug
-//	    RTE_LOG(INFO, EAL, "scanning dir: %s\n", dirname);	
+	    RTE_LOG(INFO, EAL, "scanning dir %s\n", dirname);	
         if (platform_scan_uio(dirname, devname) < 0)
 			goto error;
 	}

@@ -415,6 +415,11 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	ctx->sync_addr = mz->addr;
 	dev_info.sync_va = mz->addr;
 	dev_info.sync_phys = mz->phys_addr;
+	
+	//dev_info.is_platform_dev = conf->is_platform_dev;	 for debug by mqc
+    //if(conf->is_platform_dev){
+    //    rte_eth_macaddr_get(ops->port_id, (struct ether_addr *)(dev_info.addr_bytes)); 
+    //}
 
 	ctx->pktmbuf_pool = pktmbuf_pool;
 	ctx->group_id = conf->group_id;

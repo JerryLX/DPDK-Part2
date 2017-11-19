@@ -168,6 +168,9 @@ struct rte_kni_device_info {
 
 	/* mbuf size */
 	unsigned mbuf_size;
+	
+	uint8_t addr_bytes[6]; /**< Address bytes in transmission order */
+    uint8_t is_platform_dev;
 };
 
 #define KNI_DEVICE "kni"

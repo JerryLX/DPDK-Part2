@@ -70,6 +70,8 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_lcore.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_timer.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_interrupts.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_alarm.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_platform.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_platform_uio.c
 
 # from common dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_lcore.c
@@ -96,6 +98,8 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_malloc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += malloc_elem.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += malloc_heap.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_keepalive.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_platform.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_platform_uio.c
 
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_cpuflags.c
@@ -119,6 +123,7 @@ CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 CFLAGS_eal_common_options.o := -D_GNU_SOURCE
 CFLAGS_eal_common_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_common_lcore.o := -D_GNU_SOURCE
+
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603

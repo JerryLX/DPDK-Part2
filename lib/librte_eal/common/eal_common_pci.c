@@ -167,7 +167,6 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
 	      const struct rte_pci_device *pci_dev)
 {
 	const struct rte_pci_id *id_table;
-
 	for (id_table = pci_drv->id_table; id_table->vendor_id != 0;
 	     id_table++) {
 		/* check if device's identifiers match the driver's ones */
@@ -412,7 +411,6 @@ rte_pci_probe(void)
 	struct rte_devargs *devargs;
 	int probe_all = 0;
 	int ret = 0;
-
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
 		probe_all = 1;
 

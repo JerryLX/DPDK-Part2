@@ -56,5 +56,6 @@ SYMLINK-y-include += rte_eth_ctrl.h
 SYMLINK-y-include += rte_dev_info.h
 SYMLINK-y-include += rte_flow.h
 SYMLINK-y-include += rte_flow_driver.h
+SYMLINK-y-include += rte_ethdev_platform.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -182,6 +182,7 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>
+#include <rte_platform.h>
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
 #include "rte_dev_info.h"
@@ -1381,6 +1382,24 @@ typedef int (*eth_l2_tunnel_offload_set_t)
 	 uint8_t en);
 /**< @internal enable/disable the l2 tunnel offload functions */
 
+
+typedef void (*eth_tso_enable_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to enable the TX tso mode of an Ethernet device. */
+
+typedef void (*eth_tso_disable_t)(struct rte_eth_dev *dev);
+/**< @internal Function used to disable the TX tso mode of an Ethernet device. */
+
+typedef uint16_t (*eth_rx_burst_remain_t)(void *rxq,
+				   struct rte_mbuf **rx_pkts,
+				   uint16_t nb_pkts);
+/**< @internal Retrieve input packets from a receive queue of an Ethernet device. (private mbuf)*/
+
+
+typedef uint16_t (*eth_tx_burst_remain_t)(void *txq,
+				   struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
+/**< @internal Send output packets on a transmit queue of an Ethernet device.(private mbuf) */
+
 #ifdef RTE_NIC_BYPASS
 
 enum {
@@ -1461,6 +1480,8 @@ struct eth_dev_ops {
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
 	eth_allmulticast_enable_t  allmulticast_enable;/**< RX multicast ON. */
 	eth_allmulticast_disable_t allmulticast_disable;/**< RX multicast OF. */
+    eth_tso_enable_t           tso_enable; /**< TSO ON. */
+	eth_tso_disable_t          tso_disable;/**< TSO OFF. */
 	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
 	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address. */
 	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address. */
@@ -1659,10 +1680,14 @@ enum rte_eth_dev_state {
 struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	eth_rx_burst_remain_t rx_pkt_burst_remain; /**< Pointer to PMD receive function.(private mbuf) */
+	eth_tx_burst_remain_t tx_pkt_burst_remain; /**< Pointer to PMD transmit function. (private mbuf) */
 	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
 	struct rte_eth_dev_data *data;  /**< Pointer to device data */
+	const struct eth_driver *driver;/**< Driver for this device */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
+    struct rte_platform_device *platform_dev; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
 	/** User application callbacks for NIC interrupts */
 	struct rte_eth_dev_cb_list link_intr_cbs;
@@ -1676,7 +1701,7 @@ struct rte_eth_dev {
 	 * received packets before passing them to the driver for transmission.
 	 */
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
-	enum rte_eth_dev_state state; /**< Flag indicating the port state */
+    enum rte_eth_dev_state state; /**< Flag indicating the port state */
 } __rte_cache_aligned;
 
 struct rte_eth_dev_sriov {
@@ -1756,6 +1781,80 @@ struct rte_eth_dev_data {
  */
 extern struct rte_eth_dev rte_eth_devices[];
 
+struct eth_driver;
+/**
+ * @internal
+ * Initialization function of an Ethernet driver invoked for each matching
+ * Ethernet PCI device detected during the PCI probing phase.
+ *
+ * @param eth_dev
+ *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
+ *   associated with the matching device and which have been [automatically]
+ *   allocated in the *rte_eth_devices* array.
+ *   The *eth_dev* structure is supplied to the driver initialization function
+ *   with the following fields already initialized:
+ *
+ *   - *pci_dev*: Holds the pointers to the *rte_pci_device* structure which
+ *     contains the generic PCI information of the matching device.
+ *
+ *   - *driver*: Holds the pointer to the *eth_driver* structure.
+ *
+ *   - *dev_private*: Holds a pointer to the device private data structure.
+ *
+ *   - *mtu*: Contains the default Ethernet maximum frame length (1500).
+ *
+ *   - *port_id*: Contains the port index of the device (actually the index
+ *     of the *eth_dev* structure in the *rte_eth_devices* array).
+ *
+ * @return
+ *   - 0: Success, the device is properly initialized by the driver.
+ *        In particular, the driver MUST have set up the *dev_ops* pointer
+ *        of the *eth_dev* structure.
+ *   - <0: Error code of the device initialization failure.
+ */
+typedef int (*eth_dev_init_t)(struct rte_eth_dev *eth_dev);
+
+/**
+ * @internal
+ * Finalization function of an Ethernet driver invoked for each matching
+ * Ethernet PCI device detected during the PCI closing phase.
+ *
+ * @param eth_dev
+ *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
+ *   associated with the matching device and which have been [automatically]
+ *   allocated in the *rte_eth_devices* array.
+ * @return
+ *   - 0: Success, the device is properly finalized by the driver.
+ *        In particular, the driver MUST free the *dev_ops* pointer
+ *        of the *eth_dev* structure.
+ *   - <0: Error code of the device initialization failure.
+ */
+typedef int (*eth_dev_uninit_t)(struct rte_eth_dev *eth_dev);
+
+/**
+ * @internal
+ * The structure associated with a PMD Ethernet driver.
+ *
+ * Each Ethernet driver acts as a PCI driver and is represented by a generic
+ * *eth_driver* structure that holds:
+ *
+ * - An *rte_pci_driver* structure (which must be the first field).
+ *
+ * - The *eth_dev_init* function invoked for each matching PCI device.
+ *
+ * - The *eth_dev_uninit* function invoked for each matching PCI device.
+ *
+ * - The size of the private data to allocate for each matching device.
+ */
+struct eth_driver {
+	struct rte_pci_driver pci_drv;    /**< The PMD is also a PCI driver. */
+	struct rte_platform_driver platform_drv;    /**< Or a Platform driver. */
+	eth_dev_init_t eth_dev_init;      /**< Device init function. */
+	eth_dev_uninit_t eth_dev_uninit;  /**< Device uninit function. */
+	unsigned int dev_private_size;    /**< Size of device private data. */
+};
+
+
 /**
  * Iterates over valid ethdev ports.
  *
@@ -1792,6 +1891,20 @@ uint8_t rte_eth_dev_count(void);
 
 /**
  * @internal
+ * A function invoked by the initialization function of an Ethernet driver
+ * to simultaneously register itself as a Platform driver and as an Ethernet
+ * Poll Mode Driver (PMD).
+ *
+ * In order not to modify original DPDK, add this funtion for Platform Device.
+ *
+ * @param eth_drv
+ *   The pointer to the *eth_driver* structure associated with
+ *   the Ethernet driver.
+ */
+void rte_eth_platform_driver_register(struct eth_driver *eth_drv);
+
+/**
+ * @internal
  * Returns a ethdev slot specified by the unique identifier name.
  *
  * @param	name
@@ -1824,6 +1937,7 @@ struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
  *        device.
  *   - Error: Null pointer.
  */
+ 
 struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
 
 /**
