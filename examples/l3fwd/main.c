@@ -144,26 +144,38 @@ static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 };*/
 
 static struct lcore_params lcore_params_array_default[] = {
-	{0, 0, 0},
-	{0, 1, 0},
-	{0, 2, 0},
-	{0, 3, 0},
-	{0, 4, 0},
-	{1, 0, 1},
-	{1, 1, 1},
-	{1, 2, 1},
-	{1, 3, 1},
-	{1, 4, 1},
-	{2, 0, 2},
-	{2, 1, 2},
-	{2, 2, 2},
-	{2, 3, 2},
-	{2, 4, 2},
-	{3, 0, 3},
-	{3, 1, 3},
-	{3, 2, 3},
-	{3, 3, 3},
-	{3, 4, 3},
+	//{0, 0, 0},
+	//{1, 0, 1},
+	{2, 0, 0},
+	//{3, 0, 3},
+	//{4, 9, 4},
+	//{5, 9, 5},
+	//{6, 9, 6},
+	//{7, 9, 7},
+    //{8, 9, 1},
+	//{9, 9, 9},
+	//{6, 10, 0},
+	//{6, 11, 0},
+	//{6, 12, 0},
+	//{6, 13, 0},
+	//{6, 14, 0},
+	//{6, 15, 0},
+	//{1, 0, 16},
+	//{1, 1, 17},
+	//{1, 2, 18},
+	//{1, 3, 19},
+	//{1, 4, 20},
+	//{1, 5, 21},
+	//{1, 6, 22},
+	//{1, 7, 23},
+	//{1, 8, 24},
+	//{1, 9, 25},
+	//{1, 10, 26},
+	//{1, 11, 27},
+	//{1, 12, 28},
+	//{1, 13, 29},
+	//{1, 14, 30},
+	//{1, 15, 31},
 };
 
 static struct lcore_params * lcore_params = lcore_params_array_default;
@@ -295,12 +307,12 @@ get_port_n_rx_queues(const uint8_t port)
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		if (lcore_params[i].port_id == port) {
-			if (lcore_params[i].queue_id == queue+1)
-				queue = lcore_params[i].queue_id;
-			else
-				rte_exit(EXIT_FAILURE, "queue ids of the port %d must be"
-						" in sequence and must start with 0\n",
-						lcore_params[i].port_id);
+			//if (lcore_params[i].queue_id == queue+1) //for debug by mqc
+				queue = lcore_params[i].queue_id;   
+			//else
+			//	rte_exit(EXIT_FAILURE, "queue ids of the port %d must be"
+			//			" in sequence and must start with 0\n",
+			//			lcore_params[i].port_id);
 		}
 	}
 	return (uint8_t)(++queue);
@@ -908,16 +920,6 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
 
 	nb_ports = rte_eth_dev_count();
-
-	
-	/*for (portid = 0; portid < nb_ports; portid++) {
-		if ((enabled_port_mask & (1 << portid)) == 0)
-		{
-			printf("port %u can't use\n", portid);
-		}
-		else
-			printf("port %u is enabled\n\n", portid);
-	}*/
 	
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
@@ -952,6 +954,7 @@ main(int argc, char **argv)
 				"Cannot configure device: err=%d, port=%d\n",
 				ret, portid);
 
+				
 		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");

@@ -114,6 +114,7 @@ extern uint32_t hash_entry_number;
 extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+extern uint32_t socket_to_lcore[RTE_MAX_LCORE];
 
 /* Send burst of packets on an output interface */
 static inline int

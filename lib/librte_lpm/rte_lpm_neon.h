@@ -86,15 +86,26 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 
 	ptbl = (const uint32_t *)&lpm->tbl24[(uint32_t)idx];
 	tbl[0] = *ptbl;
+	
+	//printf("tbl[0] = %x\n", tbl[0]);
+	
 	ptbl = (const uint32_t *)&lpm->tbl24[idx >> 32];
 	tbl[1] = *ptbl;
 
+	//printf("tbl[1] = %x\n", tbl[1]);
+	
 	idx = vgetq_lane_u64((uint64x2_t)i24, 1);
-
+	
+	
 	ptbl = (const uint32_t *)&lpm->tbl24[(uint32_t)idx];
 	tbl[2] = *ptbl;
+	
+	//printf("tbl[2] = %x\n", tbl[2]);
+	
 	ptbl = (const uint32_t *)&lpm->tbl24[idx >> 32];
 	tbl[3] = *ptbl;
+	
+	//printf("tbl[3] = %x\n", tbl[3]);
 
 	/* get 4 indexes for tbl8[]. */
 	i8.x = vandq_s32(ip, mask8);
@@ -109,6 +120,7 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 			likely((pt2 & mask_xv) == mask_v)) {
 		*(uint64_t *)hop = pt & RTE_LPM_MASKX4_RES;
 		*(uint64_t *)(hop + 2) = pt2 & RTE_LPM_MASKX4_RES;
+		//printf("lpmx4_lookup_success\n");
 		return;
 	}
 
@@ -140,6 +152,8 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 		ptbl = (const uint32_t *)&lpm->tbl8[i8.u32[3]];
 		tbl[3] = *ptbl;
 	}
+
+		printf("lpmx4_lookup_fail\n");
 
 	hop[0] = (tbl[0] & RTE_LPM_LOOKUP_SUCCESS) ? tbl[0] & 0x00FFFFFF : defv;
 	hop[1] = (tbl[1] & RTE_LPM_LOOKUP_SUCCESS) ? tbl[1] & 0x00FFFFFF : defv;

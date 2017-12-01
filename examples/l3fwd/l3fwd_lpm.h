@@ -70,6 +70,7 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
 
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
 		/* Handle IPv4 headers.*/
+        //printf("ipv4\n");
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
 
@@ -108,7 +109,6 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
 
 		dst_port = lpm_get_ipv6_dst_port(ipv6_hdr, portid,
 					qconf->ipv6_lookup_struct);
-
 		if (dst_port >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;

@@ -119,4 +119,4 @@ dep_hns_ethdev.o = hns_ethdev.c /usr/include/stdc-predef.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_cycles_64.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_cycles.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_optimization.h \
- hns_logs.h
+ hns_logs.h /usr/lib/gcc/aarch64-linux-gnu/5/include/arm_neon.h

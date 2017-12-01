@@ -181,7 +181,7 @@ static void lcore_main(void)
                 printf("%llu ",(unsigned long long)count_tx[qid]);
             printf("\n");
         }
-        for(port=0;port<2;port++){
+        for(port=6;port<7;port++){
             for (qid = 0 ; qid < 16; qid++){
                 struct rte_mbuf *bufs[BURST_SIZE];
                 const uint16_t nb_rx = rte_eth_rx_burst(port, qid,

@@ -162,6 +162,7 @@ static void lcore_main(void)
 	uint16_t nb_rx = 0, nb_tx = 0;
 	struct rte_mbuf *bufs[BURST_SIZE];
     int k;
+	//int test_port = 8;
     (void)k;
     for(qid=0;qid<16;qid++) count[qid]=0;
 	for(qid=0;qid<16;qid++) count_tx[qid]=0;
@@ -183,17 +184,60 @@ static void lcore_main(void)
                 printf("%llu ",(unsigned long long)count_tx[qid]);
             printf("\n");
         }
-        for(port=0;port<6;port++){
+        for(port=6;port<7;port++){
             for (qid = 0 ; qid < 16; qid++){
-                if(port & 1) continue;
+                //if(port & 1) continue;
                 nb_rx = rte_eth_rx_burst(port, qid,
            			bufs, BURST_SIZE);
                 speed += nb_rx;
            	    count[qid] += nb_rx;
                 if(nb_rx == 0) continue;
-                nb_tx = rte_eth_tx_burst(port|1,qid ,bufs, nb_rx);
+                nb_tx = rte_eth_tx_burst(5,qid ,bufs, nb_rx);
 	//			printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
     //       	    const uint16_t nb_tx = 0;
+                tspeed += nb_tx;
+				count_tx[qid] += nb_tx;
+                if(unlikely(nb_tx<nb_rx)){
+                    uint16_t buf = nb_tx;
+                    for(;buf<nb_rx;buf++){
+                        rte_pktmbuf_free(bufs[buf]);
+                    }
+                }
+            }
+        }
+		
+		for(port=5;port<6;port++){
+            for (qid = 0 ; qid < 16; qid++){
+                //if(port & 1) continue;
+                nb_rx = rte_eth_rx_burst(port, qid,
+           			bufs, BURST_SIZE);
+                speed += nb_rx;
+           	    count[qid] += nb_rx;
+                if(nb_rx == 0) continue;
+                nb_tx = rte_eth_tx_burst(8,qid ,bufs, nb_rx);
+	//			printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
+    //       	    const uint16_t nb_tx = 0;
+                tspeed += nb_tx;
+				count_tx[qid] += nb_tx;
+                if(unlikely(nb_tx<nb_rx)){
+                    uint16_t buf = nb_tx;
+                    for(;buf<nb_rx;buf++){
+                        rte_pktmbuf_free(bufs[buf]);
+                    }
+                }
+            }
+        }
+		
+		for(port=8;port< 9;port++){
+            for (qid = 0 ; qid < 16; qid++){
+                //if(port & 1) continue;
+                nb_rx = rte_eth_rx_burst(port, qid,
+           			bufs, BURST_SIZE);
+                speed += nb_rx;
+           	    count[qid] += nb_rx;
+                if(nb_rx == 0) continue;
+                nb_tx = rte_eth_tx_burst(5,qid ,bufs, nb_rx);
+				printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
                 tspeed += nb_tx;
 				count_tx[qid] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){

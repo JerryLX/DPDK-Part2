@@ -69,8 +69,10 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
-	if (retval != 0)
-		return retval;
+	if (retval != 0){
+		printf("config error\n");
+        return retval;
+    }
 
 	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
@@ -90,8 +92,10 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	/* Start the Ethernet port. */
 	retval = rte_eth_dev_start(port);
-	if (retval < 0)
-		return retval;
+	if (retval < 0){
+		printf("start error\n");
+        return retval;
+    }
 
 	/* Display the port MAC address. */
 	struct ether_addr addr;

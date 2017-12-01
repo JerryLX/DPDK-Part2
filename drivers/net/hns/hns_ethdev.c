@@ -27,7 +27,7 @@
 #include <rte_ethdev_platform.h>
 #include "hns_ethdev.h"
 #include "hns_logs.h"
-
+#include <arm_neon.h>
 /*
  * The set of Platform devices this driver supports
  */
@@ -40,6 +40,7 @@ static const struct rte_platform_id platform_id_hns_map[] = {
     {.name = "HISI00C2:02"},
     {0},
 };
+#define I40E_VPMD_DESC_DD_MASK  0x8000800080008000ULL
 
 //prefetch function
 #if 1
@@ -171,6 +172,41 @@ eth_hns_reta_query(struct rte_eth_dev *dev,
     return 0;
 }
 
+
+static const uint32_t *
+eth_hns_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to i40e_rxd_pkt_type_mapping() */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_TUNNEL_GRENAT,
+		RTE_PTYPE_TUNNEL_IP,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+    (void) dev;
+		return ptypes;
+}
 
 /**
  * DPDK callback to start the device.
@@ -691,9 +727,291 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
  * @return
  *   Number of packets successfully received (<= nb_pkts).
  */
-static uint16_t
-eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+static inline void
+hns_rxq_realloc_mbuf(struct hns_rx_queue *rx_queue,uint16_t idx){
+	struct hns_rx_queue *rxq;       //RX queue 
+    struct hnae_desc *rx_ring;      //RX ring (desc)
+    struct hns_rx_entry *sw_ring;
+	struct rte_mbuf *nmb;           //pointer of the new mbuf
+	uint64_t dma_addr;
+    rxq = rx_queue;
+	
+	for(int i=0;i<4;i++){
+		sw_ring = &rxq->sw_ring[idx+i];
+		rx_ring = &rxq->rx_ring[idx+i];
+		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+        if (nmb == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            break;
+        }
+		sw_ring->mbuf = nmb;
+		dma_addr = 
+            //rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(rxm));
+            rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+        rx_ring->addr = dma_addr;
+	}
+	
+}
+
+//收包函数，收取nb_pkts个描述符，如果某个描述符对应着分片的包，就按顺序在split_packet数组对应位置填上标记位
+static inline uint16_t
+_recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
+		   uint16_t nb_pkts, uint8_t *split_packet)
 {
+	struct hnae_desc *rx_ring;
+	struct hns_rx_entry *sw_ring;
+	uint16_t nb_pkts_recd;
+	uint16_t rx_id;
+	uint64_t var;
+	int num;  //能用的描述符的个数
+	int nb_hold;//用了的描述符个数
+	struct hns_adapter *hns;
+	struct hns_rx_queue *rxq;
+	/* mask to shuffle from desc. to mbuf */  
+	uint8x16_t shuf_msk = {
+		0xFF, 0xFF,   /* pkt_type set as unknown */
+		0xFF, 0xFF,   /* pkt_type set as unknown */
+		4, 5,       /* low 16 bits pkt_len */
+		0xFF, 0xFF,   
+		6, 7,       /* 16 bits data_len */
+		0xFF, 0xFF,         /* vlan set as unknown */
+		0xFF, 0xFF, 0xFF, 0xFF    /* rss set as unknown*/
+		};  
+		
+	
+	/*判断描述符是否对应的分片了的包*/ 
+	uint8x16_t split_check = {
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x40, 0x00, 0x40,
+		0x00, 0x40, 0x00, 0x40
+		};
+    
+	rxq = rx_queue;
+	rx_id = rxq->next_to_clean;
+    rx_ring = rxq->rx_ring;
+	sw_ring = rxq->sw_ring;
+	nb_hold = 0;
+    //get num of packets in desc ring
+    hns = rxq->hns;
+    num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
+    int count=0;
+	/*开始收取，每次4个*/
+	for (nb_hold = 0, nb_pkts_recd = 0; (nb_hold < nb_pkts) && (count < num) ;
+			nb_hold += 4,
+			rx_id=((rx_id + 4)>= rxq->nb_rx_desc)?0:rx_id+4) {
+		uint64x2_t descs[4];
+		uint8x16_t pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
+		uint16x8x2_t sterr_tmp1, sterr_tmp2;
+		uint64x2_t mbp1, mbp2;
+		uint16x8_t staterr;
+		uint16_t data_len;
+		uint64_t stat;
+		
+		count+=4;
+		
+		
+		/* B.1 load 1 mbuf point */
+		mbp1 = vld1q_u64((uint64_t *)&sw_ring[rx_id]);                     		//取出两个mbuf指针
+		
+		/* Read desc statuses backwards to avoid race condition */
+		/* A.1 load 4 pkts desc */
+		descs[3] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+3]) + 1);                        //描述符信息加载，128bit，不要hns描述符前64地址位和最后32位的保留位就是128位
+		rte_rmb();                                     
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */                    
+		vst1q_u64((uint64_t *)&rx_pkts[nb_hold], mbp1);                           //把获取的mbuf指针存到指定位置，每次循环存4个
+
+		/* B.1 load 1 mbuf point */                                           
+		mbp2 = vld1q_u64((uint64_t *)&sw_ring[rx_id + 2]);                      
+
+		descs[2] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+2]) + 1);
+		/* B.1 load 2 mbuf point */
+		descs[1] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+1]) + 1);
+		descs[0] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id]) + 1);
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */
+		vst1q_u64((uint64_t *)&rx_pkts[nb_hold + 2], mbp2);
+		
+		//然后重新分配下这四个用了的mbuf
+		hns_rxq_realloc_mbuf(rxq,rx_id);
+		
+		if (split_packet) {
+			rte_mbuf_prefetch_part2(rx_pkts[nb_hold]);
+			rte_mbuf_prefetch_part2(rx_pkts[nb_hold + 1]);
+			rte_mbuf_prefetch_part2(rx_pkts[nb_hold + 2]);
+			rte_mbuf_prefetch_part2(rx_pkts[nb_hold + 3]);
+		}
+
+		/* avoid compiler reorder optimization */
+		rte_compiler_barrier();                                               //这个不知道干嘛的。。。照着写。
+		
+		/* pkt 3,4 shift the pktlen field to be 16-bit aligned
+		
+		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};                          //这个用于16-bit aligned，没怎么看懂...
+		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
+					    len_shl);
+		descs[3] = vreinterpretq_u64_u32(len3);
+		uint32x4_t len2 = vshlq_u32(vreinterpretq_u32_u64(descs[2]),
+					    len_shl);
+		descs[2] = vreinterpretq_u64_u32(len2); */                            //----------这段对齐的作用还没搞清楚,不知道对应该怎么改。
+		
+		
+		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
+		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
+		pkt_mb3 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[2]), shuf_msk);       //开始对描述符字段进行重排列，排出来为[0,0,0,0,pktlen,pktlen,0,0,data_len,data_len,0,0,0,0,0,0]
+		
+		data_len = vgetq_lane_u16(vreinterpretq_u16_u8(pkt_mb4),4);
+		hns->stats.rx_bytes += data_len;
+		data_len = vgetq_lane_u16(vreinterpretq_u16_u8(pkt_mb3),4);           //hns_adapter里的数据需要设置一下
+		hns->stats.rx_bytes += data_len;
+		
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
+				       vreinterpretq_u16_u64(descs[3]));
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
+				       vreinterpretq_u16_u64(descs[2]));
+		
+		/* C.2 get 4 pkts staterr value  */                                 
+		staterr = vzipq_u16(sterr_tmp1.val[0],                               //这里得到的staterr为[l0,l1,l2,l3,h0,h1,h2,h3]
+				    sterr_tmp2.val[0]).val[0];                               //其中l代表一个描述符的ipoff_bnum_pid_flag字段低16位，h代表高16位，包含VALID有效标志，和FRAG（是否为分片标志）
+		stat = vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 1);            //stat就是[h0,h1,h2,h3]
+		
+		
+		/* pkt 1,2 shift the pktlen field to be 16-bit aligned
+		uint32x4_t len1 = vshlq_u32(vreinterpretq_u32_u64(descs[1]),
+					    len_shl);
+		descs[1] = vreinterpretq_u64_u32(len1);
+		uint32x4_t len0 = vshlq_u32(vreinterpretq_u32_u64(descs[0]),
+					    len_shl);
+		descs[0] = vreinterpretq_u64_u32(len0);*/              		        //还是那个对齐操作，又来了。。
+		
+		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
+		pkt_mb2 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[1]), shuf_msk);
+		pkt_mb1 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[0]), shuf_msk);
+		
+		data_len = vgetq_lane_u16(vreinterpretq_u16_u8(pkt_mb2),4);
+		hns->stats.rx_bytes += data_len;
+		data_len = vgetq_lane_u16(vreinterpretq_u16_u8(pkt_mb1),4);
+		hns->stats.rx_bytes += data_len;                                     //hns_adapter里的数据需要设置一下
+		
+        /* D.3 copy final 3,4 data to rx_pkts */
+		vst1q_u8((void *)&rx_pkts[nb_hold + 3]->rx_descriptor_fields1,
+				 pkt_mb4);
+		vst1q_u8((void *)&rx_pkts[nb_hold + 2]->rx_descriptor_fields1,           //把pkt_mb：包含了pkt_len和data_len的信息存入mbuf描述符区域
+				 pkt_mb3);
+		
+				 
+		//开始检查4个描述符是否是分片的
+		/* C* extract and record EOP bit */
+		if (split_packet) {
+			uint8x16_t eop_shuf_mask = {
+					0x09, 0x0B, 0x0D, 0x0F,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF};
+			uint8x16_t eop_bits;
+
+			/* and with mask to extract bits, flipping 1-0 */
+			eop_bits = vreinterpretq_u8_u16(staterr);
+			eop_bits = vandq_u8(eop_bits, split_check);
+			/* the staterr values are not in order, as the count
+			 * count of dd bits doesn't care. However, for end of
+			 * packet tracking, we do care, so shuffle. This also
+			 * compresses the 32-bit values to 8-bit
+			 */
+			eop_bits = vqtbl1q_u8(eop_bits, eop_shuf_mask);      //把4个获得的分片标志位(每个是uint8_t移到一起，uint32_t)
+
+			/* store the resulting 32-bit value */
+			vst1q_lane_u32((uint32_t *)split_packet,
+				       vreinterpretq_u32_u8(eop_bits), 0);
+			split_packet += 4;
+			/* zero-out next pointers */
+			rx_pkts[nb_hold]->next = NULL;
+			rx_pkts[nb_hold + 1]->next = NULL;
+			rx_pkts[nb_hold + 2]->next = NULL;
+			rx_pkts[nb_hold + 3]->next = NULL;
+		}
+
+//		rte_prefetch_non_temporal(rx_ring + 4);
+		/* D.3 copy final 1,2 data to rx_pkts */
+		vst1q_u8((void *)&rx_pkts[nb_hold + 1]->rx_descriptor_fields1,
+			 pkt_mb2);
+		vst1q_u8((void *)&rx_pkts[nb_hold]->rx_descriptor_fields1,        //把后两个mbuf相关信息也存入
+			 pkt_mb1);
+		
+		/* C.4 calc avaialbe number of desc */
+		var = __builtin_popcountll(stat & I40E_VPMD_DESC_DD_MASK);    //计算这一轮收了几个有效包，如果小于4个，break
+		nb_pkts_recd += var;
+		if (likely(var != 4))
+			break;
+	}
+	
+	/* Update 数据 */
+		
+    rxq->next_to_clean = rx_id;
+	hns_clean_rx_buffers(rxq, nb_hold);
+
+	
+	return nb_pkts_recd;
+		
+	
+}
+
+
+
+static inline uint16_t
+reassemble_packets(struct hns_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+		   uint16_t nb_bufs, uint8_t *split_flags)
+{
+	struct rte_mbuf *pkts[32]; /*finished pkts*/ //这个放入最终的muf，然后拷贝到目标 rx_bufs当中去
+	struct rte_mbuf *start = rxq->pkt_first_seg;
+	struct rte_mbuf *end =  rxq->pkt_last_seg;
+	unsigned pkt_idx, buf_idx;
+
+	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
+		if (end != NULL) {
+			/* processing a split packet */
+			end->next = rx_bufs[buf_idx];
+			//rx_bufs[buf_idx]->data_len += rxq->crc_len;
+
+			start->nb_segs++;
+			start->pkt_len += rx_bufs[buf_idx]->data_len;
+			end = end->next;
+
+			if (!split_flags[buf_idx]) {
+				/* it's the last packet of the set */
+				/*start->hash = end->hash;
+				start->ol_flags = end->ol_flags; */ //这个flags和hash先不加，因为搞不懂
+				pkts[pkt_idx++] = start;
+				start = end = NULL;
+			}
+		} else {
+			/* not processing a split packet */
+			if (!split_flags[buf_idx]) {
+				/* not a split packet, save and skip */
+				pkts[pkt_idx++] = rx_bufs[buf_idx];
+				continue;
+			}
+			end = start = rx_bufs[buf_idx];
+		}
+	}
+
+	/* save the partial packet for next time */
+	rxq->pkt_first_seg = start;
+	rxq->pkt_last_seg = end;
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	return pkt_idx;
+}
+
+
+static uint16_t eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+    if(1){
     struct hns_rx_queue *rxq;       //RX queue 
     struct hnae_desc *rx_ring;      //RX ring (desc)
     struct hns_rx_entry *sw_ring;
@@ -855,8 +1173,46 @@ pkt_err:
     rxq->pkt_last_seg = last_seg;
     rxq->current_num = current_num;
     hns_clean_rx_buffers(rxq, nb_hold);
-    return nb_rx;
+    return nb_rx;	
+    }
+    else{
+	struct hns_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[32] = {0};   //收包对应的分片标记位数组，大小为同时收包的最大值，这里设定的是32
+	int rx_nb;
+	struct hns_adapter *hns;
+	
+	hns = rxq->hns;
+	
+	/* 收取nb_pkts个描述符 */
+	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+			split_flags);
+	
+	/* happy day case, full burst + no packets to be joined */   //最好情况，收的包全都不是分片的，直接成功
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+
+	if (rxq->pkt_first_seg == NULL &&
+			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+			split_fl64[2] == 0 && split_fl64[3] == 0)
+		return nb_bufs;
+		
+	/* reassemble any packets that need reassembly*/    //如果需要分片，那就看现在rxq的pkt_first_seg 是不是null，是的话在这次收的描述符中就找到第一个分片的mbuf
+	unsigned i = 0;
+
+	if (rxq->pkt_first_seg == NULL) {
+		/* find the first split flag, and only reassemble then*/
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	rx_nb = i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+		&split_flags[i]);    //然后把分了片的组装起来
+	hns->stats.rx_pkts+=rx_nb;
+	
+	return rx_nb;
+    }
 }
+
 
 static uint16_t
 eth_hns_recv_pkts_remain(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
@@ -1412,6 +1768,7 @@ static const struct eth_dev_ops eth_hns_ops = {
     .link_update        = eth_hns_link_update,
     .reta_update        = eth_hns_reta_update,
     .reta_query         = eth_hns_reta_query,
+	.dev_supported_ptypes_get = eth_hns_supported_ptypes_get,
 };
 
 static int
@@ -1550,6 +1907,8 @@ static struct rte_platform_driver rte_hns_pmd = {
 	.probe = eth_hns_platform_probe,
 	.remove = eth_hns_platform_remove,
 };
+
+
 
 
 RTE_PMD_REGISTER_PLATFORM(net_hns, rte_hns_pmd);

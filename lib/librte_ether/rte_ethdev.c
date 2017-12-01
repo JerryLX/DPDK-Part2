@@ -219,8 +219,8 @@ rte_eth_dev_allocate(const char *name)
 {
 	uint8_t port_id;
 	struct rte_eth_dev *eth_dev;
-	printf("eth alloc:%s\n",name);
     port_id = rte_eth_dev_find_free_port();
+	printf("eth alloc,port:%d, name:%s\n",port_id,name);
 	if (port_id == RTE_MAX_ETHPORTS) {
 		RTE_PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
 		return NULL;
@@ -697,7 +697,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	int diag;
-
+ 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	if (nb_rx_q > RTE_MAX_QUEUES_PER_PORT) {
@@ -716,6 +716,8 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	dev = &rte_eth_devices[port_id];
 
+	printf("port_id = %d, dev_name = %s\n", port_id, dev->data->name);
+	
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
@@ -905,7 +907,7 @@ rte_eth_dev_start(uint8_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 	
 	dev = &rte_eth_devices[port_id];
-	
+    printf("start:%s\n",dev->data->name);	
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_start, -ENOTSUP);
 	
 	if (dev->data->dev_started != 0) {

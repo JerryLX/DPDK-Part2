@@ -74,11 +74,14 @@
 static volatile bool force_quit;
 
 /* MAC updating enabled by default */
-static int mac_updating = 1;
+//static int mac_updating = 1;
+static int mac_updating = 0;
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
 #define NB_MBUF   8192
+
+#define QUEUE_ID 0
 
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -216,7 +219,7 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 		l2fwd_mac_updating(m, dst_port);
 
 	buffer = tx_buffer[dst_port];
-	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
+	sent = rte_eth_tx_buffer(dst_port, QUEUE_ID, buffer, m);
 	if (sent)
 		port_statistics[dst_port].tx += sent;
 }
@@ -272,7 +275,7 @@ l2fwd_main_loop(void)
 				portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
 				buffer = tx_buffer[portid];
 
-				sent = rte_eth_tx_buffer_flush(portid, 0, buffer);
+				sent = rte_eth_tx_buffer_flush(portid, QUEUE_ID, buffer);
 				if (sent)
 					port_statistics[portid].tx += sent;
 
@@ -305,7 +308,7 @@ l2fwd_main_loop(void)
 		for (i = 0; i < qconf->n_rx_port; i++) {
 
 			portid = qconf->rx_port_list[i];
-			nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
+			nb_rx = rte_eth_rx_burst((uint8_t) portid, QUEUE_ID,
 						 pkts_burst, MAX_PKT_BURST);
 
 			port_statistics[portid].rx += nb_rx;
@@ -670,7 +673,7 @@ main(int argc, char **argv)
 
 		/* init one RX queue */
 		fflush(stdout);
-		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
+		ret = rte_eth_rx_queue_setup(portid, QUEUE_ID, nb_rxd,
 					     rte_eth_dev_socket_id(portid),
 					     NULL,
 					     l2fwd_pktmbuf_pool);
@@ -680,7 +683,7 @@ main(int argc, char **argv)
 
 		/* init one TX queue on each port */
 		fflush(stdout);
-		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
+		ret = rte_eth_tx_queue_setup(portid, QUEUE_ID, nb_txd,
 				rte_eth_dev_socket_id(portid),
 				NULL);
 		if (ret < 0)

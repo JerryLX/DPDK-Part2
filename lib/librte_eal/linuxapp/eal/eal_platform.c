@@ -74,7 +74,6 @@ platform_unbind_kernel_driver(struct rte_platform_device *dev)
 	n = snprintf(buf, sizeof(buf), "%s\n",
 	             name);
 	if ((n < 0) || (n >= (int)sizeof(buf))) {
-		RTE_LOG(ERR, EAL, "%s(): snprintf failed\n", __func__);
 		goto error;
 	}
 	if (fwrite(buf, n, 1, f) == 0) {
@@ -139,7 +138,7 @@ platform_uio_parse_one_map(struct rte_platform_device *dev,
     char addr_buf[32], size_buf[32];
     uint64_t uio_addr, uio_size;
 
-    RTE_LOG(DEBUG,EAL, "parsing one map: %s\n", parent_dirname);
+    //RTE_LOG(DEBUG,EAL, "parsing one map: %s\n", parent_dirname);
     
     snprintf(addr_name, sizeof(addr_name), "%s/%s", parent_dirname, "addr");
     snprintf(size_name, sizeof(addr_name), "%s/%s", parent_dirname, "size");
@@ -162,8 +161,8 @@ platform_uio_parse_one_map(struct rte_platform_device *dev,
     dev->mem_resource[index].phys_addr = uio_addr;
     dev->mem_resource[index].len = uio_size;
     
-    RTE_LOG(DEBUG, EAL, "parsing map, index: %d, phaddr: %lx, size: %lu\n", 
-            index,uio_addr,uio_size);
+    //RTE_LOG(DEBUG, EAL, "parsing map, index: %d, phaddr: %lx, size: %lu\n", 
+    //        index,uio_addr,uio_size);
     
     return 0;
 }
@@ -222,7 +221,6 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 
     //set uio_num
     dev->uio_num = uio_num;
-    RTE_LOG(ERR, EAL, "scaning device %s, uio_num: %d\n", dev_name, uio_num);
     snprintf(filename, sizeof(filename), "%s/uio/uio%u", 
             dirname, uio_num);
     
@@ -240,7 +238,7 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 		free(dev);
 		return -1;
 	}
-    RTE_LOG(INFO, EAL, "%s has driver: %s\n", dev_name, driver);
+    //RTE_LOG(INFO, EAL, "%s has driver: %s\n", dev_name, driver);
 
 	if (!ret) {
 		if (!strcmp(driver, "hns_uio"))
@@ -369,7 +367,7 @@ rte_platform_scan(void)
 
         snprintf(devname, sizeof(devname), "%s", e->d_name);
 
-	    RTE_LOG(INFO, EAL, "scanning dir %s\n", dirname);	
+	    //RTE_LOG(INFO, EAL, "scanning dir %s\n", dirname);	
         if (platform_scan_uio(dirname, devname) < 0)
 			goto error;
 	}
