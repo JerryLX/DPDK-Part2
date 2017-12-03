@@ -395,10 +395,10 @@ rte_lpm_lookup(struct rte_lpm *lpm, uint32_t ip, uint32_t *next_hop)
 	}
 
 	*next_hop = ((uint32_t)tbl_entry & 0x00FFFFFF);
-	if (tbl_entry & RTE_LPM_LOOKUP_SUCCESS)
-		printf("rte_lpm_lookup success");
-    else
-        printf("rte_lpm_lookup fail");		
+	//if (tbl_entry & RTE_LPM_LOOKUP_SUCCESS)
+	//	printf("rte_lpm_lookup success");
+    //else
+    //    printf("rte_lpm_lookup fail");		
 	return (tbl_entry & RTE_LPM_LOOKUP_SUCCESS) ? 0 : -ENOENT;
 }
 

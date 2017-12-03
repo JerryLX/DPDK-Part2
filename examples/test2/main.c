@@ -71,6 +71,7 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_ip.h>
 
 #define RX_RING_SIZE 128
 #define TX_RING_SIZE 512
@@ -157,15 +158,24 @@ static void lcore_main(void)
 	uint8_t port = 1;
     uint8_t qid;
     uint64_t cur_tsc, prev_tsc;
-    uint64_t count[16];
-	uint64_t count_tx[16];
+    uint64_t count[16][3];
+	uint64_t count_tx[16][3];
 	uint16_t nb_rx = 0, nb_tx = 0;
 	struct rte_mbuf *bufs[BURST_SIZE];
     int k;
 	//int test_port = 8;
     (void)k;
-    for(qid=0;qid<16;qid++) count[qid]=0;
-	for(qid=0;qid<16;qid++) count_tx[qid]=0;
+    for(qid=0;qid<16;qid++) {
+        count[qid][0]=0;
+        count[qid][1]=0;
+        count[qid][2]=0;
+    }
+    
+	for(qid=0;qid<16;qid++) {
+        count_tx[qid][0]=0;
+        count_tx[qid][1]=0;
+        count_tx[qid][2]=0;
+    }
     prev_tsc = 0;
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n",
 			rte_lcore_id());
@@ -177,12 +187,14 @@ static void lcore_main(void)
             prev_tsc = cur_tsc;
             speed = 0;
             tspeed = 0;
+            for(int i=0;i<3;i++){
             for(qid=0;qid<16;qid++)
-                printf("%llu ",(unsigned long long)count[qid]);
+                printf("%llu ",(unsigned long long)count[qid][i]);
             printf("\n");
 			for(qid=0;qid<16;qid++)
-                printf("%llu ",(unsigned long long)count_tx[qid]);
+                printf("%llu ",(unsigned long long)count_tx[qid][i]);
             printf("\n");
+            }
         }
         for(port=6;port<7;port++){
             for (qid = 0 ; qid < 16; qid++){
@@ -190,13 +202,31 @@ static void lcore_main(void)
                 nb_rx = rte_eth_rx_burst(port, qid,
            			bufs, BURST_SIZE);
                 speed += nb_rx;
-           	    count[qid] += nb_rx;
+           	    count[qid][0] += nb_rx;
                 if(nb_rx == 0) continue;
+			 	
+                struct ipv4_hdr *ipv4_hdr;
+	            struct ether_hdr *eth_hdr;
+				uint32_t new_dst_addr;
+				
+				new_dst_addr = 0x10109;
+				
+				
+				for (int i = 0; i < nb_rx; i++)
+				{
+				eth_hdr = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+				ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+				
+//				printf("6   ori_dst_addr = %x\n", ipv4_hdr->dst_addr);
+//				printf("6   new_dst_addr = %x\n", new_dst_addr);
+				
+				ipv4_hdr->dst_addr = new_dst_addr;
+				} 
                 nb_tx = rte_eth_tx_burst(5,qid ,bufs, nb_rx);
-	//			printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
+				//printf("port6 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
     //       	    const uint16_t nb_tx = 0;
                 tspeed += nb_tx;
-				count_tx[qid] += nb_tx;
+				count_tx[qid][0] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){
                     uint16_t buf = nb_tx;
                     for(;buf<nb_rx;buf++){
@@ -212,13 +242,13 @@ static void lcore_main(void)
                 nb_rx = rte_eth_rx_burst(port, qid,
            			bufs, BURST_SIZE);
                 speed += nb_rx;
-           	    count[qid] += nb_rx;
+           	    count[qid][2] += nb_rx;
                 if(nb_rx == 0) continue;
-                nb_tx = rte_eth_tx_burst(8,qid ,bufs, nb_rx);
-	//			printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
+                nb_tx = rte_eth_tx_burst(6,qid ,bufs, nb_rx);
+				//printf("port5 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
     //       	    const uint16_t nb_tx = 0;
                 tspeed += nb_tx;
-				count_tx[qid] += nb_tx;
+				count_tx[qid][2] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){
                     uint16_t buf = nb_tx;
                     for(;buf<nb_rx;buf++){
@@ -234,12 +264,29 @@ static void lcore_main(void)
                 nb_rx = rte_eth_rx_burst(port, qid,
            			bufs, BURST_SIZE);
                 speed += nb_rx;
-           	    count[qid] += nb_rx;
+           	    count[qid][1] += nb_rx;
                 if(nb_rx == 0) continue;
-                nb_tx = rte_eth_tx_burst(5,qid ,bufs, nb_rx);
-				printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
+				 struct ipv4_hdr *ipv4_hdr;
+	            struct ether_hdr *eth_hdr;
+				uint32_t new_dst_addr;
+				
+				new_dst_addr = 0x10107;
+
+				
+				
+				for (int i = 0; i < nb_rx; i++)
+				{
+				  bufs[i]->packet_type = 273;
+                    eth_hdr = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+				  ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+				  ipv4_hdr -> dst_addr = new_dst_addr;
+				  //printf("8   ori_dst_addr = %x\n", ipv4_hdr->dst_addr);
+				} 
+
+                nb_tx = rte_eth_tx_burst(8,qid ,bufs, nb_rx);
+				//printf("port8 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
                 tspeed += nb_tx;
-				count_tx[qid] += nb_tx;
+				count_tx[qid][1] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){
                     uint16_t buf = nb_tx;
                     for(;buf<nb_rx;buf++){

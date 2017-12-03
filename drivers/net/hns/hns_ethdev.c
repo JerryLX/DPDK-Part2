@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <unistd.h>
-
 #include <rte_common.h>
 #include <rte_interrupts.h>
 #include <rte_byteorder.h>
@@ -774,9 +773,9 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 	uint8x16_t shuf_msk = {
 		0xFF, 0xFF,   /* pkt_type set as unknown */
 		0xFF, 0xFF,   /* pkt_type set as unknown */
-		4, 5,       /* low 16 bits pkt_len */
+		12, 13,       /* low 16 bits pkt_len */
 		0xFF, 0xFF,   
-		6, 7,       /* 16 bits data_len */
+		14, 15,       /* 16 bits data_len */
 		0xFF, 0xFF,         /* vlan set as unknown */
 		0xFF, 0xFF, 0xFF, 0xFF    /* rss set as unknown*/
 		};  
@@ -810,7 +809,7 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16x8_t staterr;
 		uint16_t data_len;
 		uint64_t stat;
-		
+	    (void) stat;	
 		count+=4;
 		
 		
@@ -819,7 +818,7 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		
 		/* Read desc statuses backwards to avoid race condition */
 		/* A.1 load 4 pkts desc */
-		descs[3] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+3]) + 1);                        //描述符信息加载，128bit，不要hns描述符前64地址位和最后32位的保留位就是128位
+		descs[3] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+3]));                        //描述符信息加载，128bit，不要hns描述符前64地址位和最后32位的保留位就是128位
 		rte_rmb();                                     
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */                    
@@ -828,10 +827,10 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		/* B.1 load 1 mbuf point */                                           
 		mbp2 = vld1q_u64((uint64_t *)&sw_ring[rx_id + 2]);                      
 
-		descs[2] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+2]) + 1);
+		descs[2] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+2]));
 		/* B.1 load 2 mbuf point */
-		descs[1] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+1]) + 1);
-		descs[0] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id]) + 1);
+		descs[1] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id+1]));
+		descs[0] =  vld1q_u64(((uint64_t *)&rx_ring[rx_id]));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[nb_hold + 2], mbp2);
@@ -870,15 +869,15 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		hns->stats.rx_bytes += data_len;
 		
 		/* C.1 4=>2 filter staterr info only */
-		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
-				       vreinterpretq_u16_u64(descs[3]));
+		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[3]),
+				       vreinterpretq_u16_u64(descs[1]));
 		/* C.1 4=>2 filter staterr info only */
 		sterr_tmp1 = vzipq_u16(vreinterpretq_u16_u64(descs[0]),
 				       vreinterpretq_u16_u64(descs[2]));
 		
 		/* C.2 get 4 pkts staterr value  */                                 
-		staterr = vzipq_u16(sterr_tmp1.val[0],                               //这里得到的staterr为[l0,l1,l2,l3,h0,h1,h2,h3]
-				    sterr_tmp2.val[0]).val[0];                               //其中l代表一个描述符的ipoff_bnum_pid_flag字段低16位，h代表高16位，包含VALID有效标志，和FRAG（是否为分片标志）
+		staterr = vzipq_u16(sterr_tmp1.val[1],                               //这里得到的staterr为[l0,l1,l2,l3,h0,h1,h2,h3]
+				    sterr_tmp2.val[1]).val[0];                               //其中l代表一个描述符的ipoff_bnum_pid_flag字段低16位，h代表高16位，包含VALID有效标志，和FRAG（是否为分片标志）
 		stat = vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 1);            //stat就是[h0,h1,h2,h3]
 		
 		
@@ -943,12 +942,17 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 			 pkt_mb2);
 		vst1q_u8((void *)&rx_pkts[nb_hold]->rx_descriptor_fields1,        //把后两个mbuf相关信息也存入
 			 pkt_mb1);
-		
+	    rx_pkts[nb_hold + 0]->data_off = RTE_PKTMBUF_HEADROOM;	
+	    rx_pkts[nb_hold + 1]->data_off = RTE_PKTMBUF_HEADROOM;	
+	    rx_pkts[nb_hold + 2]->data_off = RTE_PKTMBUF_HEADROOM;	
+	    rx_pkts[nb_hold + 3]->data_off = RTE_PKTMBUF_HEADROOM;	
 		/* C.4 calc avaialbe number of desc */
-		var = __builtin_popcountll(stat & I40E_VPMD_DESC_DD_MASK);    //计算这一轮收了几个有效包，如果小于4个，break
-		nb_pkts_recd += var;
-		if (likely(var != 4))
-			break;
+		//var = __builtin_popcountll(stat & I40E_VPMD_DESC_DD_MASK);    //计算这一轮收了几个有效包，如果小于4个，break
+        //printf("var=%d",(int)var);
+        (void) var;
+        nb_pkts_recd += 4;
+		//if (likely(var != 4))
+		//	break;
 	}
 	
 	/* Update 数据 */
@@ -1054,12 +1058,6 @@ static uint16_t eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uin
     sw_ring = rxq->sw_ring;
     //get num of packets in desc ring
     num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
-    //num = dsaf_reg_read(hns->uio_index, RCB_REG_FBDNUM, hns->cdev_fd,rxq->queue_id, 0);
-    /*
-    if(num < 16) {
-        hns_clean_rx_buffers(rxq, nb_hold);
-        return 0;
-    }*/
     while(nb_rx < nb_pkts && nb_hold < num ){
         //printf("recv in queue:%d\n",num);
 next_desc:
@@ -1067,17 +1065,6 @@ next_desc:
         rxd = *rxdp;
         rxe = &sw_ring[rx_id];
 
-//#ifdef OPTIMIZATION
-//        if(rte_ring_dequeue(rxq->cache_ring, 
-//                    nmb_buf)<0){
-//            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-//                        "queue_id=%u", (unsigned) rxq->port_id,
-//                        (unsigned) rxq->queue_id);
-//            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
-//            break;
-//        }
-//        nmb = nmb_buf[0];
-//#else
         nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
         if (nmb == NULL){
             PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
@@ -1086,7 +1073,6 @@ next_desc:
             rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
             break;
         }
-//#endif
         nb_hold++;
         rx_id++;
         if(rx_id == rxq->nb_rx_desc) {
@@ -1164,7 +1150,7 @@ next_desc:
         first_seg = NULL;
         continue;
 pkt_err:
-        //printf("pkt err in recv\n");
+        printf("pkt err in recv\n");
         rte_pktmbuf_free_seg(rxm);
         first_seg = NULL;
     }
@@ -1420,7 +1406,7 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
     uint8_t ip_offset = 0;
 //    uint16_t paylen = 0;
     uint16_t mss=0;
-    uint64_t flag = rxm->ol_flags;
+//    uint64_t flag = rxm->ol_flags;
     struct hnae_desc *tx_ring = txq->tx_ring;
     struct hnae_desc *desc = &tx_ring[txq->next_to_use];
     /*if(tso_flag){
@@ -1432,7 +1418,7 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
         sizeoflast = sizeoflast ? sizeoflast : BD_MAX_SEND_SIZE;
     }*/
     desc->addr = rte_mbuf_data_dma_addr(rxm)+offset;
-//    desc->tx.send_size = rte_cpu_to_le_16((uint16_t)rxm->data_len);
+    desc->tx.send_size = rte_cpu_to_le_16((uint16_t)rxm->data_len);
     desc->tx.send_size = size;
     hnae_set_bit(rrcfv, HNSV2_TXD_VLD_B,1);
     hnae_set_field(bn_pid, HNSV2_TXD_BUFNUM_M, 0, buf_num - 1);
@@ -1448,16 +1434,16 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
 */    //printf("data:%d,pkt:%d\n",rxm->data_len,rxm->pkt_len);
 
     if(first == 1){
-        ip_offset = ETH_HLEN;
-        if(flag & PKT_TX_VLAN_PKT)
-            ip_offset += VLAN_HLEN;    
+        //ip_offset = ETH_HLEN;
+        //if(flag & PKT_TX_VLAN_PKT)
+        //    ip_offset += VLAN_HLEN;    
 
         if(rxm->packet_type & (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV6)){
-  //          printf("ipv4 or ipv6\n");
+            //printf("ipv4 or ipv6\n");
             hnae_set_bit(rrcfv, HNSV2_TXD_L4CS_B, 1);
             if(rxm->packet_type & RTE_PTYPE_L3_IPV6){
                 hnae_set_bit(tvsvsn, HNSV2_TXD_IPV6_B, 1);
-    //            printf("ipv6\n");
+              //  printf("ipv6\n");
             }
             else{
                 hnae_set_bit(rrcfv, HNSV2_TXD_L3CS_B, 1);
@@ -1470,6 +1456,7 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
            }
         }
  //       printf("ip_offset:%d, size:%d\n",ip_offset,size);
+        ip_offset = 0;
         desc->tx.ip_offset = ip_offset;
         desc->tx.mss = rte_cpu_to_le_16(mss);
         desc->tx.tse_vlan_snap_v6_sctp_nth = tvsvsn;
@@ -1484,6 +1471,7 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
     if(txq->next_to_use == txq->nb_tx_desc)
         txq->next_to_use = 0;
     
+
 }
 
 static int
@@ -1635,7 +1623,8 @@ eth_hns_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
         nb_buf = tx_pkt->nb_segs;
         
         if(nb_buf > tx_ring_space(txq)){
-     //       printf("txq:%d,result found at no ring space!\n",txq->queue_id);
+            if(hns->port == 8)
+            printf("port:%d,result found at no ring space!\n",hns->port);
      //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
             if(nb_tx == 0){
                 return 0;
@@ -1804,7 +1793,7 @@ eth_hns_dev_init (struct rte_eth_dev *dev){
     }
     hns->cdev_fd = fd;
  
-
+    hns->port = dev->data->port_id;
     //set queue num
     args.index = uio_index;
     if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_QNUM, &args) < 0) {

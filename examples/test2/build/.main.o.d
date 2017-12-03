@@ -130,4 +130,5 @@ dep_main.o = /root/dpdk-part2/examples/test2/main.c /usr/include/stdc-predef.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_platform.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ether.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_eth_ctrl.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_dev_info.h
+ /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_dev_info.h \
+ /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ip.h

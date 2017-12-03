@@ -191,7 +191,7 @@ static void lcore_main(void)
                 if(nb_rx == 0) continue;
                 
                 const uint16_t nb_tx = rte_eth_tx_burst(port,qid ,	bufs, nb_rx);
-	//			printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
+				//printf("nb_rx=%d   nb_tx= %d\n", nb_rx, nb_tx);
     //       	    const uint16_t nb_tx = 0;
                 tspeed += nb_tx;
 				count_tx[qid] += nb_tx;

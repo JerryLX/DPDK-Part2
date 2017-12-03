@@ -83,6 +83,8 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 
 	/* extract values from tbl24[] */
 	idx = vgetq_lane_u64((uint64x2_t)i24, 0);
+	//printf("idx[0] = %x\n", (uint32_t)idx);
+	//printf("idx[1] = %x\n", (uint32_t)(idx >> 32));
 
 	ptbl = (const uint32_t *)&lpm->tbl24[(uint32_t)idx];
 	tbl[0] = *ptbl;
@@ -95,7 +97,8 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 	//printf("tbl[1] = %x\n", tbl[1]);
 	
 	idx = vgetq_lane_u64((uint64x2_t)i24, 1);
-	
+	//printf("idx[2] = %x\n", (uint32_t)idx);
+	//printf("idx[3] = %x\n", (uint32_t)(idx >> 32));
 	
 	ptbl = (const uint32_t *)&lpm->tbl24[(uint32_t)idx];
 	tbl[2] = *ptbl;
@@ -153,8 +156,9 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 		tbl[3] = *ptbl;
 	}
 
-		printf("lpmx4_lookup_fail\n");
+	//printf("lpmx4_lookup_fail\n");
 
+	
 	hop[0] = (tbl[0] & RTE_LPM_LOOKUP_SUCCESS) ? tbl[0] & 0x00FFFFFF : defv;
 	hop[1] = (tbl[1] & RTE_LPM_LOOKUP_SUCCESS) ? tbl[1] & 0x00FFFFFF : defv;
 	hop[2] = (tbl[2] & RTE_LPM_LOOKUP_SUCCESS) ? tbl[2] & 0x00FFFFFF : defv;

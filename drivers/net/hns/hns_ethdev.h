@@ -150,7 +150,7 @@
 /* hardware spec ring buffer format */
 __packed struct hnae_desc {
 	__le64 addr;
-	union {
+    union {
 		struct {
 			union {
 				__le16 asid_bufnum_pid;
