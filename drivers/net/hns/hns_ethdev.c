@@ -101,6 +101,7 @@ reg_write(void *io_base, unsigned long long offset, uint16_t queue_id,
     addr += (offset+HNS_RCB_REG_OFFSET*(queue_id));
     if(rxtx) addr+=HNS_RCB_TX_REG_OFFSET;
     *(uint32_t *)addr = value;
+   // rte_wmb();
 }
 
 //static int
@@ -734,8 +735,8 @@ hns_rxq_realloc_mbuf(struct hns_rx_queue *rx_queue,uint16_t idx){
 	struct rte_mbuf *nmb;           //pointer of the new mbuf
 	uint64_t dma_addr;
     rxq = rx_queue;
-	
-	for(int i=0;i<4;i++){
+	int i;
+	for( i=0;i<4;i++){
 		sw_ring = &rxq->sw_ring[idx+i];
 		rx_ring = &rxq->rx_ring[idx+i];
 		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
@@ -990,7 +991,7 @@ reassemble_packets(struct hns_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 			if (!split_flags[buf_idx]) {
 				/* it's the last packet of the set */
 				/*start->hash = end->hash;
-				start->ol_flags = end->ol_flags; */ //这个flags和hash先不加，因为搞不懂
+				start->ol_flags = end->ol_flags; */ 
 				pkts[pkt_idx++] = start;
 				start = end = NULL;
 			}
@@ -1015,8 +1016,302 @@ reassemble_packets(struct hns_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 
 static uint16_t eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
-    if(1){
-    struct hns_rx_queue *rxq;       //RX queue 
+    /*
+   struct hns_rx_queue *rxq;       //RX queue 
+    struct hnae_desc *rx_ring;      //RX ring (desc)
+    struct hns_rx_entry *sw_ring;
+    struct hns_rx_entry *rxe,*rxe2,*rxe3,*rxe4;
+    struct hnae_desc *rxdp,*rxdp2,*rxdp3,*rxdp4;         //pointer of the current desc
+    struct rte_mbuf *first_seg;
+    struct rte_mbuf *last_seg;
+    struct hnae_desc rxd,rxd2,rxd3,rxd4;           //current desc
+    struct rte_mbuf *nmb,*nmb2,*nmb3,*nmb4;           //pointer of the new mbuf
+    struct rte_mbuf *rxm,*rxm2,*rxm3,*rxm4;
+    struct hns_adapter *hns;
+
+    uint64_t dma_addr;
+    uint16_t rx_id,rx_id2,rx_id3,rx_id4;
+    uint16_t nb_hold;
+	uint16_t nb_rx;
+    uint16_t data_len;
+    uint16_t pkt_len;
+    int num;                   //num of desc in ring
+    uint16_t bnum,bnum2,bnum3,bnum4;
+    uint32_t bnum_flag,bnum_flag2,bnum_flag3,bnum_flag4;
+    uint16_t current_num;
+    int length;
+    bool x4=1;
+
+    (void)rxe2; 
+    (void)rxe3; 
+    (void)rxe4; 
+    nb_rx  =0;
+    nb_hold = 0;
+	rxq = rx_queue;
+    hns = rxq->hns;
+    rx_id = rxq->next_to_clean;
+    rx_ring = rxq->rx_ring;
+    first_seg = rxq->pkt_first_seg;
+    last_seg = rxq->pkt_last_seg;
+    current_num = rxq->current_num;
+    sw_ring = rxq->sw_ring;
+    //get num of packets in desc ring
+    num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
+    while(nb_rx+3< nb_pkts && nb_hold+3 < num ){
+        //printf("recv in queue:%d\n",num);
+        if(x4==0)
+        {
+            break;
+        }
+        rxdp= &rx_ring[rx_id];
+        rx_id2=(rx_id+1) & (rxq->nb_rx_desc-1);
+        rx_id3=(rx_id2+1) & (rxq->nb_rx_desc-1);
+        rx_id4=(rx_id3+1) & (rxq->nb_rx_desc-1);            
+        nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+        nmb2=rte_mbuf_raw_alloc(rxq->mb_pool);
+        nmb3=rte_mbuf_raw_alloc(rxq->mb_pool);
+        nmb4=rte_mbuf_raw_alloc(rxq->mb_pool);
+        if((nmb==NULL) || (nmb2==NULL)|| (nmb3==NULL)|| (nmb4==NULL))
+        {
+            rte_pktmbuf_free(nmb);
+            rte_pktmbuf_free(nmb2);
+            rte_pktmbuf_free(nmb3);
+            rte_pktmbuf_free(nmb4);
+            x4=0;
+            break;
+        }
+        uint64_t dma_addr2,dma_addr3,dma_addr4;
+
+        rxd = *rxdp;
+        rxe=&sw_ring[rx_id];
+        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+        get_v2rx_desc_bnum(bnum_flag, &bnum);
+        dma_addr = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+        rxdp->addr = dma_addr;
+
+        
+        rxdp2= &rx_ring[rx_id2];
+        rxd2 = *rxdp2;
+        bnum_flag2 = rte_le_to_cpu_32(rxd2.rx.ipoff_bnum_pid_flag);
+        get_v2rx_desc_bnum(bnum_flag2, &bnum2);
+        rxe2=&sw_ring[rx_id2];
+        dma_addr2 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb2));
+        rxdp2->addr = dma_addr2;
+
+        rxdp3= &rx_ring[rx_id3];
+        rxd3 = *rxdp3;
+        bnum_flag3 = rte_le_to_cpu_32(rxd3.rx.ipoff_bnum_pid_flag);
+        get_v2rx_desc_bnum(bnum_flag3, &bnum3);
+        rxe3=&sw_ring[rx_id3];
+        dma_addr3 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb3));
+        rxdp3->addr = dma_addr3;
+
+        rxdp4= &rx_ring[rx_id4];
+        rxd4 = *rxdp4;
+        bnum_flag4 = rte_le_to_cpu_32(rxd4.rx.ipoff_bnum_pid_flag);
+        get_v2rx_desc_bnum(bnum_flag4, &bnum4);
+        rxe4=&sw_ring[rx_id4];
+        
+        dma_addr4 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb4));
+        rxdp4->addr = dma_addr4;
+        if(x4 && ((bnum & bnum2 & bnum3 & bnum4)==1))
+        { 
+
+            rx_id=(rx_id4+1) & (rxq->nb_rx_desc-1);
+            rxm = rxe->mbuf;
+            rxe->mbuf = nmb;
+            pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
+	        data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
+    	    rxm->data_off = RTE_PKTMBUF_HEADROOM;
+    	    rxm->data_len = data_len;
+    	    rxm->pkt_len = pkt_len;
+        	rxm->port = rxq->port_id;
+        	rxm->hash.rss = rxd.rx.rss_hash;
+
+			rxm2 = rxe->mbuf;
+            rxe->mbuf = nmb2;
+            pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd2.rx.pkt_len));
+	        data_len = (uint16_t) (rte_le_to_cpu_16(rxd2.rx.size)); 
+    	    rxm2->data_off = RTE_PKTMBUF_HEADROOM;
+    	    rxm2->data_len = data_len;
+    	    rxm2->pkt_len = pkt_len;
+        	rxm2->port = rxq->port_id;
+        	rxm2->hash.rss = rxd2.rx.rss_hash;
+
+			rxm3 = rxe->mbuf;
+            rxe->mbuf = nmb3;
+            
+            pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd3.rx.pkt_len));
+	        data_len = (uint16_t) (rte_le_to_cpu_16(rxd3.rx.size)); 
+    	    rxm3->data_off = RTE_PKTMBUF_HEADROOM;
+    	    rxm3->data_len = data_len;
+    	    rxm3->pkt_len = pkt_len;
+        	rxm3->port = rxq->port_id;
+        	rxm3->hash.rss = rxd3.rx.rss_hash;
+
+
+
+			rxm4 = rxe->mbuf;
+            rxe->mbuf = nmb4;
+
+            pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd4.rx.pkt_len));
+	        data_len = (uint16_t) (rte_le_to_cpu_16(rxd4.rx.size)); 
+    	    rxm4->data_off = RTE_PKTMBUF_HEADROOM;
+    	    rxm4->data_len = data_len;
+    	    rxm4->pkt_len = pkt_len;
+        	rxm4->port = rxq->port_id;
+        	rxm4->hash.rss = rxd4.rx.rss_hash;
+            
+			
+            first_seg = rxm;
+            first_seg-> nb_segs = bnum;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            rxm->next = NULL;
+            first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd.rx.ipoff_bnum_pid_flag);
+            rx_pkts[nb_rx++] = first_seg;
+
+            first_seg = rxm2;
+            first_seg-> nb_segs = bnum2;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd2.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            rxm2->next = NULL;
+            first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd2.rx.ipoff_bnum_pid_flag);
+            rx_pkts[nb_rx++] = first_seg;
+           
+            first_seg = rxm3;
+            first_seg-> nb_segs = bnum3;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd3.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            rxm3->next = NULL;
+            first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd3.rx.ipoff_bnum_pid_flag);
+            rx_pkts[nb_rx++] = first_seg;
+
+            first_seg = rxm4;
+            first_seg-> nb_segs = bnum4;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd4.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S)); 
+            rxm4->next = NULL;
+            first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd4.rx.ipoff_bnum_pid_flag);
+            rx_pkts[nb_rx++] = first_seg;
+
+            hns->stats.rx_pkts=hns->stats.rx_pkts+4;
+            first_seg = NULL;
+            current_num = 1;
+            continue;
+        }
+        else
+        {
+            rte_pktmbuf_free(nmb);
+            rte_pktmbuf_free(nmb2);
+            rte_pktmbuf_free(nmb3);
+            rte_pktmbuf_free(nmb4);
+            x4=0;
+            break;
+        }
+    }
+
+
+    while(nb_rx < nb_pkts && nb_hold < num ){
+        //printf("recv in queue:%d\n",num);
+next_desc:
+        if((rx_id & 0x3) == 0){
+            rte_hns_prefetch(&rx_ring[rx_id]);
+            rte_hns_prefetch(&sw_ring[rx_id]);
+        }
+        rxdp = &rx_ring[rx_id];
+        rxd = *rxdp;
+        rxe = &sw_ring[rx_id];
+
+        nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+        if (nmb == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            break;
+        }
+        nb_hold++;
+        rx_id=(rx_id+1) & (rxq->nb_rx_desc-1);
+        
+        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+        length = rte_le_to_cpu_16(rxd.rx.pkt_len); 
+        get_v2rx_desc_bnum(bnum_flag, &bnum);
+        
+
+
+        rte_hns_prefetch(rxe->mbuf);
+        rxm = rxe->mbuf;
+        rxe->mbuf = nmb;
+
+        dma_addr = 
+            //rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(rxm));
+            rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+        rxdp->addr = dma_addr;
+
+        if(first_seg == NULL){
+            //this is the first seg
+            first_seg = rxm;
+            first_seg-> nb_segs = bnum;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            if(length <= HNS_RX_HEAD_SIZE){
+                if(unlikely(bnum != 1)){
+                    goto pkt_err;
+                }
+            } else{
+                if(unlikely(bnum >= (int)MAX_SKB_FRAGS)){
+                    goto pkt_err;
+                } 
+            }
+            current_num = 1;
+        }else{
+            //this is not the first seg
+            last_seg->next = rxm;
+        }
+      	pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
+        data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
+        rxm->data_off = RTE_PKTMBUF_HEADROOM;
+        rxm->data_len = data_len;
+        rxm->pkt_len = pkt_len;
+        //printf("data_len:%d,%d\n",data_len,pkt_len);
+        rxm->port = rxq->port_id;
+        rxm->hash.rss = rxd.rx.rss_hash;
+        
+        hns->stats.rx_bytes += data_len;  
+
+        if(current_num < bnum) {
+            last_seg = rxm;
+            current_num++;
+            goto next_desc;
+        }
+        hns->stats.rx_pkts++;
+        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
+       // printf("RX ip offset= %u",ip_offset);
+        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
+        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
+        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
+        
+        rxm->next = NULL;
+        //rte_packet_prefetch((char *)first_seg->buf_addr + first_seg->data_off);
+        first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd.rx.ipoff_bnum_pid_flag);
+        rx_pkts[nb_rx++] = first_seg;
+        first_seg = NULL;
+        continue;
+pkt_err:
+        printf("pkt err in recv\n");
+        rte_pktmbuf_free_seg(rxm);
+        first_seg = NULL;
+    }
+    rxq->next_to_clean = rx_id;
+    rxq->pkt_first_seg = first_seg;
+    rxq->pkt_last_seg = last_seg;
+    rxq->current_num = current_num;
+    hns_clean_rx_buffers(rxq, nb_hold);
+    return nb_rx;
+    */
+	 struct hns_rx_queue *rxq;       //RX queue 
     struct hnae_desc *rx_ring;      //RX ring (desc)
     struct hns_rx_entry *sw_ring;
     struct hns_rx_entry *rxe;
@@ -1061,6 +1356,10 @@ static uint16_t eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uin
     while(nb_rx < nb_pkts && nb_hold < num ){
         //printf("recv in queue:%d\n",num);
 next_desc:
+        if((rx_id & 0x3) == 0){
+            rte_hns_prefetch(&rx_ring[rx_id]);
+            rte_hns_prefetch(&sw_ring[rx_id]);
+        }
         rxdp = &rx_ring[rx_id];
         rxd = *rxdp;
         rxe = &sw_ring[rx_id];
@@ -1083,12 +1382,9 @@ next_desc:
         length = rte_le_to_cpu_16(rxd.rx.pkt_len); 
         get_v2rx_desc_bnum(bnum_flag, &bnum);
         
-        if((rx_id & 0x3) == 0){
-            rte_hns_prefetch(&rx_ring[rx_id]);
-            rte_hns_prefetch(&sw_ring[rx_id]);
-        }
 
-        rte_hns_prefetch(sw_ring[rx_id].mbuf);
+
+        rte_hns_prefetch(rxe->mbuf);
         rxm = rxe->mbuf;
         rxe->mbuf = nmb;
 
@@ -1097,7 +1393,7 @@ next_desc:
             rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
         rxdp->addr = dma_addr;
 
-        if(first_seg == NULL){
+        if(  first_seg == NULL){
             //this is the first seg
             first_seg = rxm;
             first_seg-> nb_segs = bnum;
@@ -1118,7 +1414,6 @@ next_desc:
             last_seg->next = rxm;
         }
         
-        /* Initialize the returned mbuf */
         pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
         data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
         rxm->data_off = RTE_PKTMBUF_HEADROOM;
@@ -1149,6 +1444,13 @@ next_desc:
         rx_pkts[nb_rx++] = first_seg;
         first_seg = NULL;
         continue;
+        //current_num=0;
+
+       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
+       // printf("RX ip offset= %u",ip_offset);
+        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
+        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
+        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
 pkt_err:
         printf("pkt err in recv\n");
         rte_pktmbuf_free_seg(rxm);
@@ -1159,44 +1461,610 @@ pkt_err:
     rxq->pkt_last_seg = last_seg;
     rxq->current_num = current_num;
     hns_clean_rx_buffers(rxq, nb_hold);
-    return nb_rx;	
-    }
-    else{
-	struct hns_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[32] = {0};   //收包对应的分片标记位数组，大小为同时收包的最大值，这里设定的是32
-	int rx_nb;
-	struct hns_adapter *hns;
-	
-	hns = rxq->hns;
-	
-	/* 收取nb_pkts个描述符 */
-	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
-			split_flags);
-	
-	/* happy day case, full burst + no packets to be joined */   //最好情况，收的包全都不是分片的，直接成功
-	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+    return nb_rx;
+    
+    /*   struct hns_rx_queue *rxq;       //RX queue 
+    struct hnae_desc *rx_ring;      //RX ring (desc)
+    struct hns_rx_entry *sw_ring;
+    struct hns_rx_entry *rxe,*rxe2,*rxe3,*rxe4;
+    struct hnae_desc *rxdp,*rxdp2,*rxdp3,*rxdp4;         //pointer of the current desc
+    struct rte_mbuf *first_seg;
+    struct rte_mbuf *last_seg;
+    struct hnae_desc rxd,rxd2,rxd3,rxd4;           //current desc
+    struct rte_mbuf *nmb,*nmb2,*nmb3,*nmb4;           //pointer of the new mbuf
+    struct rte_mbuf *rxm,*rxm2,*rxm3,*rxm4;
+    struct hns_adapter *hns;
 
-	if (rxq->pkt_first_seg == NULL &&
-			split_fl64[0] == 0 && split_fl64[1] == 0 &&
-			split_fl64[2] == 0 && split_fl64[3] == 0)
-		return nb_bufs;
-		
-	/* reassemble any packets that need reassembly*/    //如果需要分片，那就看现在rxq的pkt_first_seg 是不是null，是的话在这次收的描述符中就找到第一个分片的mbuf
-	unsigned i = 0;
+    uint64_t dma_addr,dma_addr2,dma_addr3,dma_addr4;
+    uint16_t rx_id,rx_id2,rx_id3,rx_id4,rx_old;
+    uint16_t nb_hold;
+	uint16_t nb_rx;
+    uint16_t data_len,data_len2,data_len3,data_len4;
+    uint16_t pkt_len,pkt_len2,pkt_len3,pkt_len4;
+    int num;                   //num of desc in ring
+    uint16_t bnum,bnum2,bnum3,bnum4;
+    uint32_t bnum_flag,bnum_flag2,bnum_flag3,bnum_flag4;
+    uint16_t current_num;
+    int length,length2,length3,length4;
+    bool cntin=0;
 
-	if (rxq->pkt_first_seg == NULL) {
-		/* find the first split flag, and only reassemble then*/
-		while (i < nb_bufs && !split_flags[i])
-			i++;
-		if (i == nb_bufs)
-			return nb_bufs;
-	}
-	rx_nb = i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
-		&split_flags[i]);    //然后把分了片的组装起来
-	hns->stats.rx_pkts+=rx_nb;
-	
-	return rx_nb;
+    nb_rx  =0;
+    nb_hold = 0;
+	rxq = rx_queue;
+    hns = rxq->hns;
+    rx_id = rxq->next_to_clean;
+    rx_ring = rxq->rx_ring;
+    first_seg = rxq->pkt_first_seg;
+    last_seg = rxq->pkt_last_seg;
+    current_num = rxq->current_num;
+    sw_ring = rxq->sw_ring;
+    //get num of packets in desc ring
+    num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
+    while(nb_rx < nb_pkts && nb_hold < num ){
+        //printf("recv in queue:%d\n",num);
+        rte_hns_prefetch(sw_ring[rx_id].mbuf);
+        rxdp = &rx_ring[rx_id];
+        rxe = &sw_ring[rx_id];
+        rx_old=rx_id;
+        if(rx_id +4<rxq->nb_rx_desc) {
+            rx_id++;
+            rx_id2=rx_id+1;
+            rx_id3=rx_id+2;
+            rx_id4=rx_id+3;
+        }
+        else
+        {
+            rx_id++;
+            if(rx_id==rxq->nb_rx_desc)
+            {
+                rx_id=0;
+                rx_id2=1;
+                rx_id3=2;
+                rx_id4=3;
+            }
+            else
+            {
+                rx_id2=rx_id+1;
+                if(rx_id2==rxq->nb_rx_desc)
+                {
+                    rx_id2=0;
+                    rx_id3=1;
+                    rx_id4=2;
+                }
+                else
+                {
+                    rx_id3=rx_id2+1;
+                    if(rx_id3==rxq->nb_rx_desc)
+                    {
+                        rx_id3=0;
+                        rx_id4=1;
+                    }
+                    else
+                    {
+                        rx_id4=rx_id3+1;
+                        if(rx_id4==rxq->nb_rx_desc)
+                        {
+                            rx_id4=0;
+                        }
+                    }
+                }
+            }
+        }
+        rxdp2= &rx_ring[rx_id];
+        rxdp3= &rx_ring[rx_id2];
+        rxdp4= &rx_ring[rx_id3];
+
+        rxe2 = &sw_ring[rx_id];
+        rxe3 = &sw_ring[rx_id2];
+        rxe4 = &sw_ring[rx_id3];
+        rxd = *rxdp;
+        rxd2 = *rxdp2;
+        rxd3 = *rxdp3;
+        rxd4 = *rxdp4;
+
+        
+
+        nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+        if (nmb == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            rx_id=rx_old;
+            break;
+        }
+        nmb2 = rte_mbuf_raw_alloc(rxq->mb_pool);
+        if (nmb2 == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            rte_pktmbuf_free(nmb);
+            rx_id=rx_old;
+            break;
+        }
+        nmb3 = rte_mbuf_raw_alloc(rxq->mb_pool);
+         if (nmb3 == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            rte_pktmbuf_free(nmb);
+            rte_pktmbuf_free(nmb2);
+            rx_id=rx_old;
+            break;
+        }
+        nmb4 = rte_mbuf_raw_alloc(rxq->mb_pool);
+        if (nmb4 == NULL){
+            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+                        "queue_id=%u", (unsigned) rxq->port_id,
+                        (unsigned) rxq->queue_id);
+            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+            rte_pktmbuf_free(nmb);
+            rte_pktmbuf_free(nmb2);
+            rte_pktmbuf_free(nmb3);
+            rx_id=rx_old;
+            break;
+        }
+
+
+        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+        bnum_flag2 = rte_le_to_cpu_32(rxd2.rx.ipoff_bnum_pid_flag);
+        bnum_flag3 = rte_le_to_cpu_32(rxd3.rx.ipoff_bnum_pid_flag);
+        bnum_flag4 = rte_le_to_cpu_32(rxd4.rx.ipoff_bnum_pid_flag);
+
+        length = rte_le_to_cpu_16(rxd.rx.pkt_len);
+        length2 = rte_le_to_cpu_16(rxd2.rx.pkt_len); 
+        length3 = rte_le_to_cpu_16(rxd3.rx.pkt_len); 
+        length4 = rte_le_to_cpu_16(rxd4.rx.pkt_len);  
+        
+        get_v2rx_desc_bnum(bnum_flag, &bnum);
+        get_v2rx_desc_bnum(bnum_flag2, &bnum2);
+        get_v2rx_desc_bnum(bnum_flag3, &bnum3);
+        get_v2rx_desc_bnum(bnum_flag4, &bnum4);
+
+
+        rte_hns_prefetch(sw_ring[rx_id].mbuf);
+        rte_hns_prefetch(sw_ring[rx_id2].mbuf);
+        rte_hns_prefetch(sw_ring[rx_id3].mbuf);
+        rxm = rxe->mbuf;
+        rxe->mbuf = nmb;
+        dma_addr = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+        rxdp->addr = dma_addr;
+
+        rxm2 = rxe2->mbuf;
+        rxe2->mbuf = nmb2;
+        dma_addr2 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb2));
+        rxdp2->addr = dma_addr2;
+
+        rxm3 =rxe3->mbuf;
+        rxe3->mbuf = nmb3;
+        dma_addr3 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb3));
+        rxdp3->addr = dma_addr3;
+        
+        rxm4 =rxe4->mbuf;
+        rxe4->mbuf = nmb4;
+        dma_addr4 = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb4));
+        rxdp4->addr = dma_addr4;
+
+        if(first_seg == NULL){
+            //this is the first seg
+            first_seg = rxm;
+            first_seg-> nb_segs = bnum;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            if(length <= HNS_RX_HEAD_SIZE){
+                if(unlikely(bnum != 1)){
+                    rte_pktmbuf_free_seg(rxm);
+                    rte_pktmbuf_free_seg(rxm2);
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    nb_hold++;
+                    continue;
+                }
+            } else{
+                if(unlikely(bnum >= (int)MAX_SKB_FRAGS)){
+                    rte_pktmbuf_free_seg(rxm);
+                    rte_pktmbuf_free_seg(rxm2);
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    nb_hold++;
+                    continue;
+                } 
+            }
+            current_num = 1;
+            nb_hold++;
+        }
+        else{
+            //this is not the first seg 
+            last_seg->next = rxm;
+        }
+        
+        pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
+        data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
+        rxm->data_off = RTE_PKTMBUF_HEADROOM;
+        rxm->data_len = data_len;
+        rxm->pkt_len = pkt_len;
+        //printf("data_len:%d,%d\n",data_len,pkt_len);
+        rxm->port = rxq->port_id;
+        rxm->hash.rss = rxd.rx.rss_hash;
+        
+        hns->stats.rx_bytes += data_len;
+
+        if(current_num < bnum) {
+            last_seg = rxm;
+            current_num++;
+            cntin=1;
+        }
+
+        if(cntin)
+        {
+            last_seg->next = rxm2;
+        }
+        else
+        {
+            nb_hold++;
+            hns->stats.rx_pkts++;
+            rxm->next = NULL;
+            rx_pkts[nb_rx++] = first_seg;
+            first_seg = rxm2;
+            first_seg-> nb_segs = bnum2;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd2.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            if(length2 <= HNS_RX_HEAD_SIZE){
+                if(unlikely(bnum2 != 1)){
+                    rte_pktmbuf_free_seg(rxm2);
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id2;
+                    continue;
+                }
+            } else{
+                if(unlikely(bnum2 >= (int)MAX_SKB_FRAGS)){
+                    rte_pktmbuf_free_seg(rxm2);
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id2;
+                    continue;
+                } 
+            }
+             current_num = 1;
+
+        }
+
+        pkt_len2 = (uint16_t) (rte_le_to_cpu_16(rxd2.rx.pkt_len));
+        data_len2 = (uint16_t) (rte_le_to_cpu_16(rxd2.rx.size)); 
+        rxm2->data_off = RTE_PKTMBUF_HEADROOM;
+        rxm2->data_len = data_len2;
+        rxm2->pkt_len = pkt_len2;
+        rxm2->port = rxq->port_id;
+        rxm2->hash.rss = rxd3.rx.rss_hash;
+        hns->stats.rx_bytes += data_len2;
+        hns->stats.rx_pkts++;
+
+        if(current_num < bnum2) {
+            last_seg = rxm2;
+            current_num++;
+            cntin=1;
+        }
+        else
+        {
+            cntin=0;
+        }
+
+
+        if(cntin)
+        {
+            last_seg->next = rxm3;
+        }
+        else
+        {
+            nb_hold++;
+            rxm2->next = NULL;
+            rx_pkts[nb_rx++] = first_seg;
+            first_seg = rxm3;
+            first_seg-> nb_segs = bnum3;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd3.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+             
+            if(length3 <= HNS_RX_HEAD_SIZE){
+                if(unlikely(bnum3 != 1)){
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id3;
+                    continue;
+                }
+            } else{
+                if(unlikely(bnum3 >= (int)MAX_SKB_FRAGS)){
+                    rte_pktmbuf_free_seg(rxm3);
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id3;
+                    continue;
+                } 
+            }
+             current_num = 1;
+
+        }
+
+        pkt_len3 = (uint16_t) (rte_le_to_cpu_16(rxd3.rx.pkt_len));
+        data_len3 = (uint16_t) (rte_le_to_cpu_16(rxd3.rx.size)); 
+        rxm3->data_off = RTE_PKTMBUF_HEADROOM;
+        rxm3->data_len = data_len3;
+        rxm3->pkt_len = pkt_len3;
+        rxm3->port = rxq->port_id;
+        rxm3->hash.rss = rxd3.rx.rss_hash;
+        hns->stats.rx_bytes += data_len3;
+        hns->stats.rx_pkts++;
+
+
+         if(current_num < bnum3) {
+            last_seg = rxm3;
+            current_num++;
+            cntin=1;
+        }
+        else
+        {
+            cntin=0;
+        }
+
+
+        if(cntin)
+        {
+            last_seg->next = rxm4;
+        }
+        else
+        {
+            nb_hold++;
+            rxm3->next = NULL;
+            rx_pkts[nb_rx++] = first_seg;
+            first_seg = rxm4;
+            first_seg-> nb_segs = bnum4;
+            first_seg->vlan_tci = 
+                rte_le_to_cpu_16(hnae_get_field(rxd4.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+            if(length4 <= HNS_RX_HEAD_SIZE){
+                if(unlikely(bnum4 != 1)){
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id4;
+                    continue;
+                }
+            } else{
+                if(unlikely(bnum4 >= (int)MAX_SKB_FRAGS)){
+                    rte_pktmbuf_free_seg(rxm4);
+                    first_seg = NULL;
+                    rx_id=rx_id4;
+                    continue;
+                } 
+            }
+            current_num = 1;
+
+        }
+
+        pkt_len4 = (uint16_t) (rte_le_to_cpu_16(rxd4.rx.pkt_len));
+        data_len4 = (uint16_t) (rte_le_to_cpu_16(rxd4.rx.size)); 
+        rxm4->data_off = RTE_PKTMBUF_HEADROOM;
+        rxm4->data_len = data_len4;
+        rxm4->pkt_len = pkt_len4;
+        rxm4->port = rxq->port_id;
+        rxm4->hash.rss = rxd4.rx.rss_hash;
+        hns->stats.rx_bytes += data_len4;
+        
+        if(current_num < bnum4) {
+            last_seg = rxm4;
+            current_num++;
+            cntin=1;
+        }
+        else
+        {
+            cntin=0;
+            hns->stats.rx_pkts++;
+            rx_pkts[nb_rx++] = first_seg;
+            nb_hold++;
+            first_seg = NULL;
+            current_num=1;
+        }
+        rx_id=rx_id4;
     }
+    rxq->next_to_clean = rx_id;
+    rxq->pkt_first_seg = first_seg;
+    rxq->pkt_last_seg = last_seg;
+    rxq->current_num = current_num;
+    hns_clean_rx_buffers(rxq, nb_hold);
+    return nb_rx;*/	
+//    if(1){
+//    struct hns_rx_queue *rxq;       //RX queue 
+//    struct hnae_desc *rx_ring;      //RX ring (desc)
+//    struct hns_rx_entry *sw_ring;
+//    struct hns_rx_entry *rxe;
+//    struct hnae_desc *rxdp;         //pointer of the current desc
+//    struct rte_mbuf *first_seg;
+//    struct rte_mbuf *last_seg;
+//    struct hnae_desc rxd;           //current desc
+//    struct rte_mbuf *nmb;           //pointer of the new mbuf
+//    struct rte_mbuf *rxm;
+//    struct hns_adapter *hns;
+//
+//    uint64_t dma_addr;
+//    uint16_t rx_id;
+//    uint16_t nb_hold;
+//	uint16_t nb_rx;
+//    uint16_t data_len;
+//    uint16_t pkt_len;
+//    int num;                   //num of desc in ring
+//    uint16_t bnum;
+//    uint32_t bnum_flag;
+//    uint16_t current_num;
+//    int length;
+//
+////#ifdef OPTIMIZATION
+////    void *nmb_buf[1];
+////#endif
+//   // uint8_t ip_offset;
+////    unsigned long long value;
+//
+//    nb_rx  =0;
+//    nb_hold = 0;
+//	rxq = rx_queue;
+//    hns = rxq->hns;
+//    rx_id = rxq->next_to_clean;
+//    rx_ring = rxq->rx_ring;
+//    first_seg = rxq->pkt_first_seg;
+//    last_seg = rxq->pkt_last_seg;
+//    current_num = rxq->current_num;
+//    sw_ring = rxq->sw_ring;
+//    //get num of packets in desc ring
+//    num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
+//    while(nb_rx < nb_pkts && nb_hold < num ){
+//        //printf("recv in queue:%d\n",num);
+//next_desc:
+//        
+//        if((rx_id & 0x3) == 0){
+//            rte_hns_prefetch(&rx_ring[rx_id]);
+//            rte_hns_prefetch(&sw_ring[rx_id]);
+//        }
+//        rxdp = &rx_ring[rx_id];
+//        rxd = *rxdp;
+//        rxe = &sw_ring[rx_id];
+//
+//        nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+//        if (nmb == NULL){
+//            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+//                        "queue_id=%u", (unsigned) rxq->port_id,
+//                        (unsigned) rxq->queue_id);
+//            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+//            break;
+//        }
+//        nb_hold++;
+//        rx_id++;
+//        if(rx_id == rxq->nb_rx_desc) {
+//            rx_id = 0;
+//        }
+//        
+//        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+//        length = rte_le_to_cpu_16(rxd.rx.pkt_len); 
+//        get_v2rx_desc_bnum(bnum_flag, &bnum);
+//        
+//      /*  if((rx_id & 0x3) == 0){
+//            rte_hns_prefetch(&rx_ring[rx_id]);
+//            rte_hns_prefetch(&sw_ring[rx_id]);
+//        }*/
+//
+//        rte_hns_prefetch(rxe->mbuf);
+//       // rte_hns_prefetch(sw_ring[rx_id].mbuf);
+//        rxm = rxe->mbuf;
+//        rxe->mbuf = nmb;
+//
+//        dma_addr = 
+//            //rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(rxm));
+//            rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
+//        rxdp->addr = dma_addr;
+//
+//        if(first_seg == NULL){
+//            //this is the first seg
+//            first_seg = rxm;
+//            first_seg-> nb_segs = bnum;
+//            first_seg->vlan_tci = 
+//                rte_le_to_cpu_16(hnae_get_field(rxd.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
+//            if(length <= HNS_RX_HEAD_SIZE){
+//                if(unlikely(bnum != 1)){
+//                    goto pkt_err;
+//                }
+//            } else{
+//                if(unlikely(bnum >= (int)MAX_SKB_FRAGS)){
+//                    goto pkt_err;
+//                } 
+//            }
+//            current_num = 1;
+//        }else{
+//            //this is not the first seg
+//            last_seg->next = rxm;
+//        }
+//        
+//        /* Initialize the returned mbuf */
+//        pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
+//        data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
+//        rxm->data_off = RTE_PKTMBUF_HEADROOM;
+//        rxm->data_len = data_len;
+//        rxm->pkt_len = pkt_len;
+//        //printf("data_len:%d,%d\n",data_len,pkt_len);
+//        rxm->port = rxq->port_id;
+//        rxm->hash.rss = rxd.rx.rss_hash;
+//        
+//        hns->stats.rx_bytes += data_len;
+//
+//        if(current_num < bnum) {
+//            last_seg = rxm;
+//            current_num++;
+//            goto next_desc;
+//        }
+//        hns->stats.rx_pkts++;
+//        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
+//       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
+//       // printf("RX ip offset= %u",ip_offset);
+//        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
+//        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
+//        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
+//        
+//        rxm->next = NULL;
+//        //rte_packet_prefetch((char *)first_seg->buf_addr + first_seg->data_off);
+//        first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd.rx.ipoff_bnum_pid_flag);
+//        rx_pkts[nb_rx++] = first_seg;
+//        first_seg = NULL;
+//        continue;
+//pkt_err:
+//        printf("pkt err in recv\n");
+//        rte_pktmbuf_free_seg(rxm);
+//        first_seg = NULL;
+//    }
+//    rxq->next_to_clean = rx_id;
+//    rxq->pkt_first_seg = first_seg;
+//    rxq->pkt_last_seg = last_seg;
+//    rxq->current_num = current_num;
+//    hns_clean_rx_buffers(rxq, nb_hold);
+//    return nb_rx;	
+//    }
+//    else{
+//	struct hns_rx_queue *rxq = rx_queue;
+//	uint8_t split_flags[32] = {0};   //收包对应的分片标记位数组，大小为同时收包的最大值，这里设定的是32
+//	int rx_nb;
+//	struct hns_adapter *hns;
+//	
+//	hns = rxq->hns;
+//	
+//	/* 收取nb_pkts个描述符 */
+//	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+//			split_flags);
+//	
+//	/* happy day case, full burst + no packets to be joined */   //最好情况，收的包全都不是分片的，直接成功
+//	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+//
+//	if (rxq->pkt_first_seg == NULL &&
+//			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+//			split_fl64[2] == 0 && split_fl64[3] == 0)
+//		return nb_bufs;
+//		
+//	/* reassemble any packets that need reassembly*/    //如果需要分片，那就看现在rxq的pkt_first_seg 是不是null，是的话在这次收的描述符中就找到第一个分片的mbuf
+//	unsigned i = 0;
+//
+//	if (rxq->pkt_first_seg == NULL) {
+//		/* find the first split flag, and only reassemble then*/
+//		while (i < nb_bufs && !split_flags[i])
+//			i++;
+//		if (i == nb_bufs)
+//			return nb_bufs;
+//	}
+//	rx_nb = i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+//		&split_flags[i]);    //然后把分了片的组装起来
+//	hns->stats.rx_pkts+=rx_nb;
+//	
+//	return rx_nb;
+//    }
 }
 
 
@@ -1357,8 +2225,9 @@ hns_tx_clean(struct hns_tx_queue *txq)
     qid = txq->queue_id;
 
     value = reg_read(hns->io_base, RCB_REG_HEAD, qid, 1);
+   // if(hns->port == 5)
+   // printf("head:%llu\n",value);
     //value = dsaf_reg_read(hns->uio_index, RCB_REG_HEAD, hns->cdev_fd,qid, 1);
-    rte_rmb();
     head = value;
     if(unlikely(!is_valid_clean_head(txq, head))) {
         PMD_TX_LOG(DEBUG, "head is not valid!");
@@ -1404,63 +2273,39 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
     uint8_t tvsvsn = 0;
     uint8_t bn_pid = 0;
     uint8_t ip_offset = 0;
-//    uint16_t paylen = 0;
     uint16_t mss=0;
-//    uint64_t flag = rxm->ol_flags;
+    uint16_t paylen=0;
     struct hnae_desc *tx_ring = txq->tx_ring;
     struct hnae_desc *desc = &tx_ring[txq->next_to_use];
-    /*if(tso_flag){
-        int frag_buf_num;
-        int sizeoflast;
-        int k;
-        frag_buf_num = (size + BD_MAX_SEND_SIZE - 1) / BD_MAX_SEND_SIZE;
-        sizeoflast = size % BD_MAX_SEND_SIZE;
-        sizeoflast = sizeoflast ? sizeoflast : BD_MAX_SEND_SIZE;
-    }*/
     desc->addr = rte_mbuf_data_dma_addr(rxm)+offset;
-    desc->tx.send_size = rte_cpu_to_le_16((uint16_t)rxm->data_len);
-    desc->tx.send_size = size;
+    //desc->tx.send_size = rte_cpu_to_le_16((uint16_t)rxm->data_len);
+    desc->tx.send_size = rte_cpu_to_le_16((uint16_t)size);
     hnae_set_bit(rrcfv, HNSV2_TXD_VLD_B,1);
     hnae_set_field(bn_pid, HNSV2_TXD_BUFNUM_M, 0, buf_num - 1);
     hnae_set_field(bn_pid, HNSV2_TXD_PORTID_M, HNSV2_TXD_PORTID_S, port_id);
-/*    hnae_set_bit(rrcfv, HNSV2_TXD_L3CS_B, 1);
-    hnae_set_bit(rrcfv, HNSV2_TXD_L4CS_B, 1);
-    hnae_set_bit(tvsvsn, HNSV2_TXD_TSE_B, 1);
-    desc->tx.ip_offset = ip_offset;
-    desc->tx.tse_vlan_snap_v6_sctp_nth = tvsvsn;
-    desc->tx.l4_len = 20;
-    desc->tx.mss = 200;
-    desc->tx.paylen = 82;
-*/    //printf("data:%d,pkt:%d\n",rxm->data_len,rxm->pkt_len);
 
     if(first == 1){
-        //ip_offset = ETH_HLEN;
+        ip_offset = ETH_HLEN;
         //if(flag & PKT_TX_VLAN_PKT)
         //    ip_offset += VLAN_HLEN;    
-
         if(rxm->packet_type & (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV6)){
-            //printf("ipv4 or ipv6\n");
             hnae_set_bit(rrcfv, HNSV2_TXD_L4CS_B, 1);
             if(rxm->packet_type & RTE_PTYPE_L3_IPV6){
                 hnae_set_bit(tvsvsn, HNSV2_TXD_IPV6_B, 1);
-              //  printf("ipv6\n");
             }
             else{
                 hnae_set_bit(rrcfv, HNSV2_TXD_L3CS_B, 1);
             }
-            //if(rxm->ol_flags & PKT_TX_TCP_SEG){
             if(txq->hns->tso && (rxm->ol_flags & PKT_TX_TCP_SEG)){
                 hnae_set_bit(tvsvsn, HNSV2_TXD_TSE_B, 1);
-                mss=BD_MAX_SEND_SIZE;//rxm->tso_segsz;
+                //mss=BD_MAX_SEND_SIZE;//rxm->tso_segsz;
                 desc->tx.paylen =rte_cpu_to_le_16((uint16_t)rxm->pkt_len) ;//rte_cpu_to_le_16(paylen);
            }
         }
- //       printf("ip_offset:%d, size:%d\n",ip_offset,size);
-        ip_offset = 0;
         desc->tx.ip_offset = ip_offset;
         desc->tx.mss = rte_cpu_to_le_16(mss);
+        desc->tx.paylen = rte_cpu_to_le_16(paylen);
         desc->tx.tse_vlan_snap_v6_sctp_nth = tvsvsn;
-        
         desc->tx.l4_len = rxm->l4_len;
     }
     
@@ -1470,8 +2315,6 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
     txq->next_to_use++;
     if(txq->next_to_use == txq->nb_tx_desc)
         txq->next_to_use = 0;
-    
-
 }
 
 static int
@@ -1595,7 +2438,7 @@ eth_hns_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
  *      Number of packets successfully transmitted (<= nb_pkts)
  */
 static uint16_t
-eth_hns_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+eth_hns_xmit_pkts2(void *tx_queue, struct rte_mbuf **tx_pkts,
         uint16_t nb_pkts)
 {
     struct hns_tx_queue *txq;
@@ -1623,8 +2466,138 @@ eth_hns_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
         nb_buf = tx_pkt->nb_segs;
         
         if(nb_buf > tx_ring_space(txq)){
-            if(hns->port == 8)
-            printf("port:%d,result found at no ring space!\n",hns->port);
+            hns_tx_clean(txq);
+     //       printf("txq:%d,result found at no ring space!\n",txq->queue_id);
+     //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+            if(nb_tx == 0){
+                return 0;
+            }
+            goto end_of_tx;
+        }
+
+        m_seg = tx_pkt;
+        port_id = m_seg->port;
+        nb_buf = m_seg->nb_segs;
+        for(i = 0; i < nb_buf; i++){
+            hns->stats.tx_bytes += m_seg->pkt_len;
+            if(hns->tso){
+                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+                nb_hold += (frags-1);
+            }
+            else{
+                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+            }
+            temp = m_seg->next;
+            rte_pktmbuf_free(m_seg);
+            m_seg = temp;
+            tx_id++;
+            if((tx_id & 0x3) == 0)
+                rte_hns_prefetch(m_seg);
+            if(tx_id == txq->nb_tx_desc)
+                tx_id = 0;
+        }
+        hns->stats.tx_pkts++;
+        nb_hold += nb_buf;
+
+        nb_tx++;
+        if(!(nb_tx < nb_pkts))
+        {
+            break;
+        }
+
+        tx_pkt = *tx_pkts++;
+
+        nb_buf = tx_pkt->nb_segs;
+        
+        if(nb_buf > tx_ring_space(txq)){
+            hns_tx_clean(txq);
+     //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+            if(nb_tx == 0){
+                return 0;
+            }
+            goto end_of_tx;
+        }
+
+        m_seg = tx_pkt;
+        port_id = m_seg->port;
+        nb_buf = m_seg->nb_segs;
+        for(i = 0; i < nb_buf; i++){
+            hns->stats.tx_bytes += m_seg->pkt_len;
+            if(hns->tso){
+                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+                nb_hold += (frags-1);
+            }
+            else{
+                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+            }
+            temp = m_seg->next;
+            rte_pktmbuf_free(m_seg);
+            m_seg = temp;
+            tx_id++;
+            if((tx_id & 0x3) == 0)
+                rte_hns_prefetch(m_seg);
+            if(tx_id == txq->nb_tx_desc)
+                tx_id = 0;
+        }
+        hns->stats.tx_pkts++;
+        nb_hold += nb_buf;
+		 nb_tx++;
+        if(!(nb_tx < nb_pkts))
+        {
+            break;
+        }
+
+        tx_pkt = *tx_pkts++;
+
+        nb_buf = tx_pkt->nb_segs;
+        
+        if(nb_buf > tx_ring_space(txq)){
+            hns_tx_clean(txq);
+     //       printf("txq:%d,result found at no ring space!\n",txq->queue_id);
+     //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+            if(nb_tx == 0){
+                return 0;
+            }
+            goto end_of_tx;
+        }
+
+        m_seg = tx_pkt;
+        port_id = m_seg->port;
+        nb_buf = m_seg->nb_segs;
+        for(i = 0; i < nb_buf; i++){
+            hns->stats.tx_bytes += m_seg->pkt_len;
+            if(hns->tso){
+                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+                nb_hold += (frags-1);
+            }
+            else{
+                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+            }
+            temp = m_seg->next;
+            rte_pktmbuf_free(m_seg);
+            m_seg = temp;
+            tx_id++;
+            if((tx_id & 0x3) == 0)
+                rte_hns_prefetch(m_seg);
+            if(tx_id == txq->nb_tx_desc)
+                tx_id = 0;
+        }
+        hns->stats.tx_pkts++;
+        nb_hold += nb_buf;
+		
+		 nb_tx++;
+        if(!(nb_tx < nb_pkts))
+        {
+            break;
+        }
+
+        tx_pkt = *tx_pkts++;
+
+        nb_buf = tx_pkt->nb_segs;
+        
+        if(nb_buf > tx_ring_space(txq)){
+            hns_tx_clean(txq);
+     //       printf("txq:%d,result found at no ring space!\n",txq->queue_id);
      //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
             if(nb_tx == 0){
                 return 0;
@@ -1662,6 +2635,422 @@ end_of_tx:
     //printf("xmit pkt:%d\n",nb_hold);
     hns_tx_clean(txq);
     //printf("nb_tx:%d\n",nb_tx);
+    return nb_tx;
+//    struct hns_tx_queue *txq;
+//    struct rte_mbuf *tx_pkt;
+//    struct rte_mbuf *m_seg;
+//    struct rte_mbuf *temp;
+//    struct hns_adapter *hns;
+//
+//    uint16_t tx_id;
+//    uint16_t nb_tx;
+//    uint16_t nb_buf;
+//    uint16_t port_id;
+//    uint32_t nb_hold;
+//    unsigned int i;
+//    txq = tx_queue;
+//    nb_hold = 0;
+//    hns = txq->hns;
+//    tx_id   = txq->next_to_use;
+//    (void) hns;
+//   // printf("next_to_use:%d,next_to_clean:%d\n",txq->next_to_use,txq->next_to_clean);
+//   // printf("nb_pkts:%d, space:%d, txq:%d,\n",nb_pkts,tx_ring_space(txq),txq->queue_id);
+//    for(nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+//        tx_pkt = *tx_pkts++;
+//
+//        nb_buf = tx_pkt->nb_segs;
+//        
+//        if(nb_buf > tx_ring_space(txq)){
+//            hns_tx_clean(txq);
+//			//if(nb_buf > tx_ring_space(txq)){
+//     //       if(hns->port == 5)
+//     //       printf("port:%d,result found at no ring space,nb_buf:%d!\n",hns->port,nb_buf);
+//     //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+//            if(nb_tx == 0){
+//                return 0;
+//            }
+//            goto end_of_tx;
+//			//}
+//        }
+//
+//        m_seg = tx_pkt;
+//        port_id = m_seg->port;
+//        nb_buf = m_seg->nb_segs;
+//        for(i = 0; i < nb_buf; i++){
+//            hns->stats.tx_bytes += m_seg->pkt_len;
+//            if(hns->tso){
+//                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+//                nb_hold += (frags-1);
+//            }
+//            else{
+//                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+//            }
+//            temp = m_seg->next;
+//            rte_pktmbuf_free(m_seg);
+//            m_seg = temp;
+//            tx_id++;
+//            if((tx_id & 0x3) == 0)
+//                rte_hns_prefetch(m_seg);
+//            if(tx_id == txq->nb_tx_desc)
+//                tx_id = 0;
+//        }
+//        hns->stats.tx_pkts++;
+//        nb_hold += nb_buf;
+//    }
+//end_of_tx:
+//    rte_wmb();
+//    hns_queue_xmit(txq, (unsigned long long)nb_hold);
+//    //printf("xmit pkt:%d\n",nb_hold);
+//    hns_tx_clean(txq);
+//    //printf("nb_tx:%d\n",nb_tx);
+//    return nb_tx;
+}
+
+static void
+fill_desc_neon(struct hns_tx_queue* txq, struct rte_mbuf** rxm, int* first,
+         uint8_t* buf_num, uint8_t* port_id, int* offset, uint32_t* size, int* frag_end,int count)
+{
+	uint8_t rrcfv_temp1[2] = {0};
+    uint8_t tvsvsn_temp1[2] = {0};
+    uint8_t rrcfv_temp2[4] ={0};
+    uint8_t rrcfv_temp3[4] ={0};
+    uint8_t rrcfv_temp4[4] ={0};
+    uint8_t tvsvsn_temp2[4]={0};
+    uint8_t tvsvsn_temp3[4]={0};
+    uint8_t ip_offset_temp[4]={0};
+    uint8_t rrcfv_fragend=0x00,rrcfv_temp=0x00;
+    uint8x16_t rrcfv, tvsvsn, bn_pid, ip_offset;
+    uint32x4_t s;
+    uint8x16_t mask,val,data_tmp1,data_tmp2;
+    uint16x8_t data_tmp3;
+    uint32x4x2_t data_tmp4;
+    //uint64x2x2_t data_tmp5,data_tmp6;
+    uint64_t addr[4];
+    uint16_t mss=0;
+    uint64x2_t addr_tmp,data_tmp;
+    uint64_t flag[4];
+    int i=0;
+    for(i=0;i<count;i++){
+    	flag[i] = rxm[i]->ol_flags;
+    }
+    struct hnae_desc *tx_ring = txq->tx_ring;
+    struct hnae_desc *desc[4];
+    if((txq->next_to_use+3) >= txq->nb_tx_desc)
+        txq->next_to_use = 0;
+    for(i=0;i<count;i++){
+    	desc[i] = &tx_ring[(txq->next_to_use)++];
+    }
+    if(txq->next_to_use == txq->nb_tx_desc)
+        txq->next_to_use = 0;
+    s=vld1q_u32(size);
+    s=vshlq_n_u32 (s,16);
+    for(i=0;i<count;i++){
+    	addr[i]= rte_mbuf_data_dma_addr(rxm[i])+offset[i];
+    }
+
+    hnae_set_bit(rrcfv_temp , HNSV2_TXD_VLD_B,1);
+    rrcfv=vld1q_dup_u8(&rrcfv_temp);
+
+    bn_pid=vdupq_n_u8((uint8_t) 0);
+    mask=vdupq_n_u8((uint8_t) HNSV2_TXD_BUFNUM_M);
+    bn_pid=vandq_u8(bn_pid,vmvnq_u8(mask));
+    val=vld1q_u8(buf_num);
+    val=vsubq_u8 (val,vdupq_n_u8((uint8_t) 1));
+    val=vandq_u8 (val,mask);
+    bn_pid=vorrq_u8(bn_pid,val);
+
+    bn_pid=vdupq_n_u8((uint8_t) 0);
+    mask=vdupq_n_u8((uint8_t) HNSV2_TXD_PORTID_M);
+    bn_pid=vandq_u8(bn_pid,vmvnq_u8(mask));
+    val=vld1q_u8(port_id);
+    val=vshlq_n_u8 (val,HNSV2_TXD_PORTID_S);
+    val=vandq_u8 (val,mask);
+    bn_pid=vorrq_u8(bn_pid,val);
+    
+    for(i=0;i<count;i++){
+    	if(first[i] == 1){
+        	ip_offset_temp[i] = ETH_HLEN;
+        	if(flag[i] & PKT_TX_VLAN_PKT)
+            	ip_offset_temp[i] += VLAN_HLEN;    
+
+        	if(rxm[i]->packet_type & (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV6)){
+  //        	  printf("ipv4 or ipv6\n");
+        		if(!rrcfv_temp1[0]){
+            		hnae_set_bit(rrcfv_temp1[0], HNSV2_TXD_L4CS_B, 1);
+            	}
+                rrcfv_temp2[i]=rrcfv_temp1[0];
+                //rrcfv=vld1q_lane_u8 (&rrcfv_temp1[0], rrcfv,   i);
+                //wait 
+
+            	if(rxm[i]->packet_type & RTE_PTYPE_L3_IPV6){
+            		if(!tvsvsn_temp1[0]){
+                		hnae_set_bit(tvsvsn_temp1[0], HNSV2_TXD_IPV6_B, 1);
+                    }
+                    tvsvsn_temp2[i]=tvsvsn_temp1[0];
+                    //tvsvsn=vld1q_lane_u8 (&tvsvsn_temp1[0], tvsvsn,   i);
+                    //wait
+            	}
+            	else{
+            		if(!rrcfv_temp1[1]){
+                		hnae_set_bit(rrcfv_temp1[1], HNSV2_TXD_L3CS_B, 1);
+                	}
+                	rrcfv_temp3[i]=rrcfv_temp1[1];
+                    //rrcfv=vld1q_lane_u8 (&rrcfv_temp1[1], rrcfv,   i);
+                    //wait
+            	}
+
+            	//if(rxm->ol_flags & PKT_TX_TCP_SEG){
+            	if(txq->hns->tso && (flag[i] & PKT_TX_TCP_SEG)){
+            		if(!tvsvsn_temp1[1]){
+                		hnae_set_bit(tvsvsn, HNSV2_TXD_TSE_B, 1);
+                	}
+                	tvsvsn_temp3[i]=tvsvsn_temp1[1];
+                    //tvsvsn=vld1q_lane_u8 (&tvsvsn_temp1[1], tvsvsn,   i);
+                	//wait
+                	mss=BD_MAX_SEND_SIZE;//rxm->tso_segsz;
+                	desc[i]->tx.paylen =rte_cpu_to_le_16((uint16_t)rxm[i]->pkt_len) ;//rte_cpu_to_le_16(paylen);
+           		}
+        	}
+ //       	printf("ip_offset:%d, size:%d\n",ip_offset,size);
+        	desc[i]->tx.mss = rte_cpu_to_le_16(mss);
+        	desc[i]->tx.l4_len = rxm[i]->l4_len;
+     	}
+    }
+
+    for(i=0;i<count;i++){
+    	if(frag_end[i]){
+    		if(!rrcfv_fragend){
+    			hnae_set_bit(rrcfv_fragend, HNSV2_TXD_FE_B, 1); 
+    		}
+    		rrcfv_temp4[i]=rrcfv_fragend;
+    		//rrcfv=vld1q_lane_u8 (&frag_end, rrcfv,   i);
+    		//wait
+    	}
+    }
+    
+
+    rrcfv=vorrq_u8(vld1q_u8 (rrcfv_temp2),rrcfv);
+    rrcfv=vorrq_u8(vld1q_u8 (rrcfv_temp3),rrcfv);
+    rrcfv=vorrq_u8(vld1q_u8 (rrcfv_temp4),rrcfv);
+    tvsvsn=vld1q_u8 (tvsvsn_temp2);
+    tvsvsn=vorrq_u8(vld1q_u8 (tvsvsn_temp3),tvsvsn);
+    ip_offset=vld1q_u8 (ip_offset_temp);
+    
+
+    data_tmp1=vzipq_u8(bn_pid,rrcfv).val[0];
+    data_tmp2=vzipq_u8(ip_offset,tvsvsn).val[0];
+    data_tmp3=vzipq_u16(vreinterpretq_u16_u8(data_tmp1),
+				       vreinterpretq_u16_u8(data_tmp2)).val[0];
+    data_tmp4=vzipq_u32(s,vreinterpretq_u32_u16(data_tmp3));
+    //data_tmp5=vzipq_u64(addr1,vreinterpretq_u64_u32(data_tmp4.val[0]));
+    //data_tmp6=vzipq_u64(addr2,vreinterpretq_u64_u32(data_tmp4.val[1]));
+
+    //finally put the data into the desc
+    if(count>0){
+    	addr_tmp=vld1q_u64(addr);
+    	data_tmp=vsetq_lane_u64 (vgetq_lane_u64 (vreinterpretq_u64_u32(data_tmp4.val[0]) ,0),addr_tmp, 1);
+    	vst1q_u64((void *)desc[0],data_tmp);
+    	count=count-1;
+    	if(count>0){
+    		data_tmp=vld1q_lane_u64 (addr+1, vreinterpretq_u64_u32(data_tmp4.val[0]) ,0);
+			vst1q_u64((void *)desc[1],data_tmp);
+			count=count-1;
+			if(count>0){
+				addr_tmp=vld1q_u64(addr+2);
+    			data_tmp=vsetq_lane_u64 (vgetq_lane_u64 (vreinterpretq_u64_u32(data_tmp4.val[0]) ,0),addr_tmp, 1);
+    			vst1q_u64((void *)desc[2],data_tmp);
+    			count=count-1;
+				if(count>0){
+    				data_tmp=vld1q_lane_u64 (addr+3, vreinterpretq_u64_u32(data_tmp4.val[1]) ,0);
+					vst1q_u64((void *)desc[3],data_tmp);
+				}
+			}
+		}
+	}
+}
+
+
+
+
+static uint16_t
+eth_hns_xmit_pkts3(void *tx_queue, struct rte_mbuf **tx_pkts,
+        uint16_t nb_pkts)
+{
+    struct hns_tx_queue *txq;
+    struct rte_mbuf *tx_pkt[4];
+    struct rte_mbuf *m_seg;
+    struct rte_mbuf *temp;
+    struct hns_adapter *hns;
+
+    uint16_t tx_id;
+    uint16_t nb_tx;
+    uint16_t nb_buf;
+    uint16_t port_id;
+    uint32_t nb_hold;
+    uint8_t buf_num[4],port_ids[4];
+    uint32_t sizes[4];
+    int offsets[4]={0,0,0,0},frag_end[4]={0,0,0,0},first[4]={0,0,0,0};
+    unsigned int i;
+    txq = tx_queue;
+    nb_hold = 0;
+    hns = txq->hns;
+    tx_id   = txq->next_to_use;
+    (void) hns;
+    int count=0;
+//    printf("next_to_use:%d,next_to_clean:%d\n",txq->next_to_use,txq->next_to_clean);
+//    printf("nb_pkts:%d, space:%d, txq:%d,\n",nb_pkts,tx_ring_space(txq),txq->queue_id);
+    for(nb_tx = 0; nb_tx < nb_pkts; ) {
+    	count=0;
+    	for(i=0;i<4;i++){
+        	tx_pkt[i] = *tx_pkts++;
+        	m_seg=*tx_pkts;
+        	nb_buf = m_seg->nb_segs;
+        	if(nb_buf==1){
+                 count++;
+                 hns->stats.tx_bytes += m_seg->pkt_len;
+                 buf_num[i]=m_seg->nb_segs;
+                 port_ids[i]=m_seg->port;
+                 first[i]=1;
+                 sizes[i]=rte_cpu_to_le_32((uint32_t)m_seg->pkt_len);
+                 frag_end[i]=1;
+                 tx_id++;
+            	 if((tx_id & 0x3) == 0)
+                 rte_hns_prefetch(m_seg);
+            	 if(tx_id == txq->nb_tx_desc)
+                	tx_id = 0;
+                 nb_tx++;
+                 if(nb_tx >= nb_pkts){
+                 	break;
+                 }
+        	}
+        	else{
+
+        		if(nb_buf > tx_ring_space(txq)){
+            //printf("txq:%d,result found at no ring space!\n",txq->queue_id);
+           // printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+            		if(nb_tx == 0){
+                		return 0;
+            		}
+            		goto end_of_tx;
+	        	}
+
+        		port_id = m_seg->port;
+        		nb_buf = m_seg->nb_segs;
+        		for(i = 0; i < nb_buf; i++){
+            		hns->stats.tx_bytes += m_seg->pkt_len;
+            		if(hns->tso){
+                		int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+                		nb_hold += (frags-1);
+            		}
+            		else{
+                		fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+            		}
+            		temp = m_seg->next;
+            		rte_pktmbuf_free(m_seg);
+            		m_seg = temp;
+            		tx_id++;
+            		if((tx_id & 0x3) == 0)
+                	rte_hns_prefetch(m_seg);
+            		if(tx_id == txq->nb_tx_desc)
+                	tx_id = 0;
+        		}
+        		hns->stats.tx_pkts++;
+        		nb_hold += nb_buf;
+        		nb_tx++;
+        		break;
+  				}
+
+        }
+        if(count > tx_ring_space(txq)){
+            //printf("txq:%d,result found at no ring space!\n",txq->queue_id);
+           // printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
+            		if(nb_tx == 0){
+                		return 0;
+            		}
+            		goto end_of_tx;
+	        	}
+        if(count==1){
+        			fill_desc(txq, tx_pkt[0], 1, buf_num[0], port_ids[0],0,rte_cpu_to_le_16((uint16_t)tx_pkt[i-1]->pkt_len),1);
+        			hns->stats.tx_pkts+=1;
+        			nb_hold += 1;
+        		}
+        else if(count > 1){
+        			fill_desc_neon(txq,tx_pkt,first,buf_num,port_ids,offsets,sizes,frag_end,count);
+        			hns->stats.tx_pkts+=count;
+        			nb_hold += count;
+        		}
+        }
+       
+end_of_tx:
+    rte_wmb();
+    hns_queue_xmit(txq, (unsigned long long)nb_hold);
+    hns_tx_clean(txq);
+    //    printf("nb_tx:%d\n",nb_tx);
+    return nb_tx;
+}
+
+static uint16_t
+eth_hns_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+        uint16_t nb_pkts)
+{
+    struct hns_tx_queue *txq;
+    struct rte_mbuf *tx_pkt;
+    struct rte_mbuf *m_seg;
+    struct rte_mbuf *temp;
+    struct hns_adapter *hns;
+
+    uint16_t tx_id;
+    uint16_t nb_tx;
+    uint16_t nb_buf;
+    uint16_t port_id;
+    uint32_t nb_hold;
+    unsigned int i;
+    txq = tx_queue;
+    nb_hold = 0;
+    hns = txq->hns;
+    tx_id   = txq->next_to_use;
+    (void) hns;
+    for(nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+        tx_pkt = *tx_pkts++;
+
+        nb_buf = tx_pkt->nb_segs;
+        
+        if(nb_buf > tx_ring_space(txq)){
+            hns_tx_clean(txq);
+            if(nb_tx == 0){
+                return 0;
+            }
+            goto end_of_tx;
+        }
+
+        m_seg = tx_pkt;
+        port_id = m_seg->port;
+        nb_buf = m_seg->nb_segs;
+        for(i = 0; i < nb_buf; i++){
+            hns->stats.tx_bytes += m_seg->pkt_len;
+            if(hns->tso){
+                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+                nb_hold += (frags-1);
+            }
+            else{
+                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
+            }
+            temp = m_seg->next;
+            rte_pktmbuf_free(m_seg);
+            m_seg = temp;
+            tx_id++;
+            if((tx_id & 0x3) == 0)
+                rte_hns_prefetch(m_seg);
+            if(tx_id == txq->nb_tx_desc)
+                tx_id = 0;
+        }
+        hns->stats.tx_pkts++;
+        nb_hold += nb_buf;
+    }
+end_of_tx:
+    rte_wmb();
+    hns_queue_xmit(txq, (unsigned long long)nb_hold);
+    hns_tx_clean(txq);
     return nb_tx;
 }
 
@@ -1832,7 +3221,9 @@ eth_hns_dev_init (struct rte_eth_dev *dev){
     //set send/recv function
     dev->tx_pkt_burst = eth_hns_xmit_pkts;
     dev->rx_pkt_burst = eth_hns_recv_pkts;
-    
+
+    (void) eth_hns_xmit_pkts2;
+	(void) eth_hns_xmit_pkts3;
     dev->tx_pkt_burst_remain = eth_hns_xmit_pkts_remain;
     dev->rx_pkt_burst_remain = eth_hns_recv_pkts_remain;
 

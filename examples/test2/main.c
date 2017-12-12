@@ -205,7 +205,7 @@ static void lcore_main(void)
            	    count[qid][0] += nb_rx;
                 if(nb_rx == 0) continue;
 			 	
-                struct ipv4_hdr *ipv4_hdr;
+                /*struct ipv4_hdr *ipv4_hdr;
 	            struct ether_hdr *eth_hdr;
 				uint32_t new_dst_addr;
 				
@@ -221,7 +221,7 @@ static void lcore_main(void)
 //				printf("6   new_dst_addr = %x\n", new_dst_addr);
 				
 				ipv4_hdr->dst_addr = new_dst_addr;
-				} 
+				} */
                 nb_tx = rte_eth_tx_burst(5,qid ,bufs, nb_rx);
 				//printf("port6 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
     //       	    const uint16_t nb_tx = 0;
@@ -266,25 +266,17 @@ static void lcore_main(void)
                 speed += nb_rx;
            	    count[qid][1] += nb_rx;
                 if(nb_rx == 0) continue;
-				 struct ipv4_hdr *ipv4_hdr;
+				/* struct ipv4_hdr *ipv4_hdr;
 	            struct ether_hdr *eth_hdr;
-				uint32_t new_dst_addr;
-				
-				new_dst_addr = 0x10107;
-
-				
-				
 				for (int i = 0; i < nb_rx; i++)
 				{
-				  bufs[i]->packet_type = 273;
-                    eth_hdr = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+                  eth_hdr = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
 				  ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
-				  ipv4_hdr -> dst_addr = new_dst_addr;
-				  //printf("8   ori_dst_addr = %x\n", ipv4_hdr->dst_addr);
-				} 
+				  if (ipv4_hdr -> dst_addr != 0x101a8c0)
+                         printf("%x\n",ipv4_hdr->dst_addr);					   
+				}  */
 
                 nb_tx = rte_eth_tx_burst(8,qid ,bufs, nb_rx);
-				//printf("port8 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
                 tspeed += nb_tx;
 				count_tx[qid][1] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){

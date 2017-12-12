@@ -252,8 +252,8 @@ out:
  **/
 s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw)
 {
-	u32 regval;
-	u32 i;
+//	u32 regval;
+//	u32 i;
 	s32 ret_val = IXGBE_SUCCESS;
 
 	DEBUGFUNC("ixgbe_start_hw_82598");
@@ -263,20 +263,20 @@ s32 ixgbe_start_hw_82598(struct ixgbe_hw *hw)
 		return ret_val;
 
 	/* Disable relaxed ordering */
-	for (i = 0; ((i < hw->mac.max_tx_queues) &&
-	     (i < IXGBE_DCA_MAX_QUEUES_82598)); i++) {
-		regval = IXGBE_READ_REG(hw, IXGBE_DCA_TXCTRL(i));
-		regval &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
-		IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL(i), regval);
-	}
-
-	for (i = 0; ((i < hw->mac.max_rx_queues) &&
-	     (i < IXGBE_DCA_MAX_QUEUES_82598)); i++) {
-		regval = IXGBE_READ_REG(hw, IXGBE_DCA_RXCTRL(i));
-		regval &= ~(IXGBE_DCA_RXCTRL_DATA_WRO_EN |
-			    IXGBE_DCA_RXCTRL_HEAD_WRO_EN);
-		IXGBE_WRITE_REG(hw, IXGBE_DCA_RXCTRL(i), regval);
-	}
+//	for (i = 0; ((i < hw->mac.max_tx_queues) &&
+//	     (i < IXGBE_DCA_MAX_QUEUES_82598)); i++) {
+//		regval = IXGBE_READ_REG(hw, IXGBE_DCA_TXCTRL(i));
+//		regval &= ~IXGBE_DCA_TXCTRL_DESC_WRO_EN;
+//		IXGBE_WRITE_REG(hw, IXGBE_DCA_TXCTRL(i), regval);
+//	}
+//
+//	for (i = 0; ((i < hw->mac.max_rx_queues) &&
+//	     (i < IXGBE_DCA_MAX_QUEUES_82598)); i++) {
+//		regval = IXGBE_READ_REG(hw, IXGBE_DCA_RXCTRL(i));
+//		regval &= ~(IXGBE_DCA_RXCTRL_DATA_WRO_EN |
+//			    IXGBE_DCA_RXCTRL_HEAD_WRO_EN);
+//		IXGBE_WRITE_REG(hw, IXGBE_DCA_RXCTRL(i), regval);
+//	}
 
 	/* set the completion timeout for interface */
 	ixgbe_set_pcie_completion_timeout(hw);
