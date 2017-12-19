@@ -62,11 +62,47 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 #endif
 		dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
 						qconf->ipv4_lookup_struct);
+		switch (portid) {
+	    //case 6:
+		//    dst_port = 5;
+        //    break;
+		case 0:
+		    dst_port = 1;
+            break;
+		case 1:
+		    dst_port = 0;
+            break;
+		case 2:
+		    dst_port = 2;
+            break;
+		//case 3:
+		//    dst_port = 2;
+        //    break;
+		//case 5:
+		//    dst_port = 6;
+        //    break;
+        //case 4:
+		//    dst_port = 4;
+        //    break;
+        //case 4:
+		//    dst_port = 7;
+        //    break;
+        //case 7:
+		//    dst_port = 4;
+        //    break;
+        //case 9:
+		//    dst_port = 8;
+        //    break;			
+        default:
+            dst_port = portid;
+        }
 
 		if (dst_port >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;
 
+			
+		
 #ifdef DO_RFC_1812_CHECKS
 		/* Update time to live and header checksum */
 		--(ipv4_hdr->time_to_live);

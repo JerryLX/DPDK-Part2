@@ -21,3 +21,9 @@ TAGS
 *.res
 *.swp
 build/*
+objects/*
+doc/*
+_install
+_postinstall
+_preinstall
+_postbuild
