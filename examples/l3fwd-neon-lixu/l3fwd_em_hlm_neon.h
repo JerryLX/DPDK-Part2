@@ -317,38 +317,8 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	for (j = 0; j < n; j += 8) {
 
-		uint32_t pkt_type =
-			pkts_burst[j]->packet_type &
-			pkts_burst[j+1]->packet_type &
-			pkts_burst[j+2]->packet_type &
-			pkts_burst[j+3]->packet_type &
-			pkts_burst[j+4]->packet_type &
-			pkts_burst[j+5]->packet_type &
-			pkts_burst[j+6]->packet_type &
-			pkts_burst[j+7]->packet_type;
-
-		uint32_t l3_type = pkt_type & RTE_PTYPE_L3_MASK;
-		uint32_t tcp_or_udp = pkt_type &
-			(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
-
-		if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV4)) {
 
 			em_get_dst_port_ipv4x8(qconf, &pkts_burst[j], portid, &dst_port[j]);
-
-		} else if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV6)) {
-
-			em_get_dst_port_ipv6x8(qconf, &pkts_burst[j], portid, &dst_port[j]);
-
-		} else {
-			dst_port[j]   = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+1] = em_get_dst_port(qconf, pkts_burst[j+1], portid);
-			dst_port[j+2] = em_get_dst_port(qconf, pkts_burst[j+2], portid);
-			dst_port[j+3] = em_get_dst_port(qconf, pkts_burst[j+3], portid);
-			dst_port[j+4] = em_get_dst_port(qconf, pkts_burst[j+4], portid);
-			dst_port[j+5] = em_get_dst_port(qconf, pkts_burst[j+5], portid);
-			dst_port[j+6] = em_get_dst_port(qconf, pkts_burst[j+6], portid);
-			dst_port[j+7] = em_get_dst_port(qconf, pkts_burst[j+7], portid);
-		}
 	}
 
 	for (; j < nb_rx; j++)

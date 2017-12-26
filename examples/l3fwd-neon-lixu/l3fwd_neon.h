@@ -67,8 +67,6 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 	//uint8_t ihl;
 
 	if (RTE_ETH_IS_IPV4_HDR(ptype)) {
-		//printf("rfc1812 ipv4_hdr.version_ihl = %x\n", ipv4_hdr->version_ihl);
-		//ihl = ipv4_hdr->version_ihl - IPV4_MIN_VER_IHL;
 
 		ipv4_hdr->time_to_live--;
 		ipv4_hdr->hdr_checksum++;
@@ -77,9 +75,6 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 				((uint8_t)ipv4_hdr->total_length == 0 &&
 				ipv4_hdr->total_length < IPV4_MIN_LEN_BE)//)
 				{
-					//printf("rfc1812 ipv4_hdr.total_length = %d\n", ipv4_hdr->total_length);
-					//printf("rfc1812 ipv4_hdr.src_addr = %x\n", ipv4_hdr->src_addr);
-					//printf("rfc1812 ipv4_hdr.dst_addr = %x\n", ipv4_hdr->dst_addr);
 			        dp[0] = BAD_PORT;			  
 				}
 
@@ -102,12 +97,10 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	int32_t *p[FWDSTEP];
     const uint32x4_t mask_eth = {0xffffffff, 0, 0, 0};
 	
-    //printf("processx4_step3 1\n");
 	p[0] = rte_pktmbuf_mtod(pkt[0], int32_t *);
 	p[1] = rte_pktmbuf_mtod(pkt[1], int32_t *);
 	p[2] = rte_pktmbuf_mtod(pkt[2], int32_t *);
 	p[3] = rte_pktmbuf_mtod(pkt[3], int32_t *);
-	//printf("processx4_step3 2\n");
 
 	
 	ve[0] = val_eth[dst_port[0]];
@@ -126,18 +119,6 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	te[1] =  vbslq_s32(mask_eth, te[1], ve[1]);
 	te[2] =  vbslq_s32(mask_eth, te[2], ve[2]);
 	te[3] =  vbslq_s32(mask_eth, te[3], ve[3]);
-	/*dpi = vgetq_lane_s32(te[0], 0);
-				printf("2       te[0][0] = %d\n",  dpi);
-	     dpi = vgetq_lane_s32(te[0], 1);
-				printf("2      te[0][1] = %d\n",  dpi);
-		 dpi = vgetq_lane_s32(te[0], 2);
-				printf("2       te[0][2] = %d\n", dpi);
-		 dpi = vgetq_lane_s32(te[0], 3);
-		printf("2         te[0][3] = %d\n", dpi);*/
-
-
-	//for (int i = 0; i < FWDSTEP; i++)
-	//	printf("3   dst_port[%d] = %d\n", i, dst_port[i]);	
 	
 	vst1q_s32(p[0], te[0]);
 	vst1q_s32(p[1], te[1]);
@@ -367,16 +348,8 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
 	 * then send them straightway.
 	 */
 	if (num >= MAX_TX_BURST && len == 0) {
-		//if (port == 6)
-		//   printf(" rte_eth_tx_burst port = %d     num = %d\n", port, num);
-	   //if (port == 8)
-		//   printf("8  rte_eth_tx_burst port = %d     num = %d\n", port, num);
-
 		n = rte_eth_tx_burst(port, qconf->tx_queue_id[port], m, num);
 		tx_count[port]+=n;
-		//if (n != 0)
-		//if (port == 6)	
-		//printf(" n = %d\n", n);
 		if (unlikely(n < num)) {
 			do {
 				rte_pktmbuf_free(m[n]);
@@ -391,98 +364,51 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
 	n = len + num;
 	n = (n > MAX_PKT_BURST) ? MAX_PKT_BURST - len : num;
 
-	/* j = 0;
-	switch (n % FWDSTEP) {
-	while (j < n) {
-	case 0:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 3:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 2:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 1:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	}
-	} */
 	
 	j = 0;
-	uint n1 = n &(~3);
-	while (j < n1) {
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		qconf->tx_mbufs[port].m_table[len + j+1] = m[j+1];
-		qconf->tx_mbufs[port].m_table[len + j+2] = m[j+2];
-		qconf->tx_mbufs[port].m_table[len + j+3] = m[j+3];
-		j+=4;
-	}
-	switch (n % FWDSTEP) {
-	case 0:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 3:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 2:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	case 1:
-		qconf->tx_mbufs[port].m_table[len + j] = m[j];
-		j++;
-	}
-	
-	len += n;
-    
-	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-        //printf("1");
-		send_burst(qconf, MAX_PKT_BURST, port);
-		//printf("2\n");
+	 switch (n % FWDSTEP) {
+     while (j < n) {
+     case 0:
+         qconf->tx_mbufs[port].m_table[len + j] = m[j];
+         j++;
+     case 3:
+         qconf->tx_mbufs[port].m_table[len + j] = m[j];
+         j++;
+     case 2:
+         qconf->tx_mbufs[port].m_table[len + j] = m[j];
+         j++;
+     case 1:
+         qconf->tx_mbufs[port].m_table[len + j] = m[j];
+         j++;
+     }
+     }
+     len += n;
 
-		/* copy rest of the packets into the TX buffer. */
-		len = num - n;
-		j = 0;
-		/* switch (len % FWDSTEP) {
-		while (j < len) {
-		case 0:
-			qconf->tx_mbufs[port].m_table[j] = m[n + j];
-			j++;
-		case 3:
-			qconf->tx_mbufs[port].m_table[j] = m[n + j];
-			j++;
-		case 2:
-			qconf->tx_mbufs[port].m_table[j] = m[n + j];
-			j++;
-		case 1:
-			qconf->tx_mbufs[port].m_table[j] = m[n + j];
-			j++;
-		}
-		} */
-	    n1 = len &(~3);
-		while (j < n1) {
-			qconf->tx_mbufs[port].m_table[ j] = m[n+j];
-			qconf->tx_mbufs[port].m_table[ j+1] = m[n+j+1];
-			qconf->tx_mbufs[port].m_table[ j+2] = m[n+j+2];
-			qconf->tx_mbufs[port].m_table[ j+3] = m[n+j+3];
-			j+=4;
-		}
-		switch (len % FWDSTEP) {
-		case 0:
-			qconf->tx_mbufs[port].m_table[ j] = m[n+j];
-			j++;
-		case 3:
-			qconf->tx_mbufs[port].m_table[ j] = m[n+j];
-			j++;
-		case 2:
-			qconf->tx_mbufs[port].m_table[ j] = m[n+j];
-			j++;
-		case 1:
-			qconf->tx_mbufs[port].m_table[ j] = m[n+j];
-			j++;
-		}
-	}
+     /* enough pkts to be sent */
+     if (unlikely(len == MAX_PKT_BURST)) {
+
+         send_burst(qconf, MAX_PKT_BURST, port);
+
+         /* copy rest of the packets into the TX buffer. */
+         len = num - n;
+         j = 0;
+         switch (len % FWDSTEP) {
+         while (j < len) {
+         case 0:
+             qconf->tx_mbufs[port].m_table[j] = m[n + j];
+             j++;
+         case 3:
+             qconf->tx_mbufs[port].m_table[j] = m[n + j];
+             j++;
+         case 2:
+             qconf->tx_mbufs[port].m_table[j] = m[n + j];
+             j++;
+         case 1:
+             qconf->tx_mbufs[port].m_table[j] = m[n + j];
+             j++;
+         }
+         }
+    }
 	qconf->tx_mbufs[port].len = len;
 }
 

@@ -850,12 +850,12 @@ prepare_ptype_parser(uint8_t portid, uint16_t queueid)
 		return 0;
 	}
 
-	if (l3fwd_lkp.check_ptype(portid))
+	//if (l3fwd_lkp.check_ptype(portid))
 		return 1;
 
-	printf("port %d cannot parse packet type, please add --%s\n",
-	       portid, CMD_LINE_OPT_PARSE_PTYPE);
-	return 0;
+	//printf("port %d cannot parse packet type, please add --%s\n",
+	//       portid, CMD_LINE_OPT_PARSE_PTYPE);
+	//return 0;
 }
 
 int

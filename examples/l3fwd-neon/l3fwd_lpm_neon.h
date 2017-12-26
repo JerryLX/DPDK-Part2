@@ -350,73 +350,36 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	for (j = 0; j<nb_rx; j++)
 	{
 		switch (portid) {
-	     case 6:
+        case 6:
 		    dst_port[j] = 5;
             break;
-	     case 4:
-		    dst_port[j] = 7;
-		    break;  
-	    case 7:
-		    dst_port[j] = 4;
-		    break;
-		
-		//case 0:
-		//    dst_port[j] = 1;
-		//    break;
-		
-		//case 1:
-		//    dst_port[j] = 0;
-		//    break;
-			
-		//case 2:
-		//    dst_port[j] = 2;
-		//    break;
-		
-		//case 3:
-		//    dst_port[j] = 3;
-		//    break;  
-		
-	    case 8:
-		    dst_port[j] = 8;
-		    break;  
-			
-		//case 9:
-		//    dst_port[j] = 8;
-		//    break;  
-	    case 5:
+		/* case 0:
+		    dst_port = 0;
+            break; 
+		case 1:
+		    dst_port = 0;
+            break;
+		case 2:
+		    dst_port = 2;
+            break;*/
+		case 3:
+		    dst_port[j] = 3;
+            break;  
+		case 5:
 		    dst_port[j] = 6;
-		    break;  
- 
-        //case 6:
-		//    dst_port[j] = 6;
-        //    break;
-		//case 0:
-		//    dst_port[j] = 1;
-        //    break;
-		//case 1:
-		//    dst_port[j] = 0;
-        //    break;
-		//case 2:
-		//    dst_port[j] = 2;
-        //    break;
-//		case 3:
-//		    dst_port[j] = 3;
-//            break;
-//		case 0:
-//		    dst_port[j] = 9;
- //           break;
-        //case 8:
-		//    dst_port[j] = 8;
-        //    break;
-//        case 5:
-//		    dst_port[j] = 6;
- //           break;
- //       case 4:
-//	        dst_port[j] = 4;
- //           break;
-  //      case 9:
-//		    dst_port[j] = 0;
- //           break;
+            break;
+        case 4:
+		    dst_port[j] = 7;
+            break;
+        case 8:
+		    dst_port[j] = 9;
+            break;
+        case 7:
+		    dst_port[j] = 4;
+            break;
+        case 9:
+		    dst_port[j] = 8;
+            break;	
          default:
 		    dst_port[j] = portid;
 	}

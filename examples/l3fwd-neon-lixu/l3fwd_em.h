@@ -67,12 +67,12 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 			(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;
 		switch (portid) {
-	    // case 6:
-		//    dst_port = 6;
-        //    break;
-	    // case 4:
-		//    dst_port = 7;
-		//    break;  
+	     case 6:
+		    dst_port = 5;
+            break;
+	     case 4:
+		    dst_port = 4;
+		    break;  
 	    //case 7:
 		//    dst_port = 4;
 		//    break;
@@ -94,9 +94,9 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		//case 9:
 		//    dst_port = 9;
 		//    break;  
-	    //case 5:
-		//    dst_port = 6;
-		//    break;  
+	    case 5:
+		    dst_port = 6;
+		    break;  
 		default:
 		    dst_port = portid;
 		}

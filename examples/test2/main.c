@@ -372,6 +372,28 @@ static void lcore_main(void)
                 }
             }
         }
+		
+		for(port=0;port<1;port++){
+            for (qid = 0 ; qid < 16; qid++){
+                //if(port & 1) continue;
+                nb_rx = rte_eth_rx_burst(port, qid,
+           			bufs, BURST_SIZE);
+                speed += nb_rx;
+           	    count[qid][2] += nb_rx;
+                if(nb_rx == 0) continue;
+                nb_tx = rte_eth_tx_burst(0,qid ,bufs, nb_rx);
+				//printf("port5 nb_rx=%d   nb_tx= %d, qid=%d\n", nb_rx, nb_tx, qid);
+    //       	    const uint16_t nb_tx = 0;
+                tspeed += nb_tx;
+				count_tx[qid][2] += nb_tx;
+                if(unlikely(nb_tx<nb_rx)){
+                    uint16_t buf = nb_tx;
+                    for(;buf<nb_rx;buf++){
+                        rte_pktmbuf_free(bufs[buf]);
+                    }
+                }
+            }
+        }
 
     }
 }

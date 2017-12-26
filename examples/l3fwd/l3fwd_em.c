@@ -547,6 +547,7 @@ em_check_ptype(int portid)
 	int ptype_l4_udp = 0;
 	uint32_t ptype_mask = RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_MASK;
 
+		return 1;
 	ret = rte_eth_dev_get_supported_ptypes(portid, ptype_mask, NULL, 0);
 	if (ret <= 0)
 		return 0;
@@ -585,7 +586,8 @@ em_check_ptype(int portid)
 	if (ptype_l4_tcp && ptype_l4_udp)
 		return 1;
 
-	return 0;
+
+
 }
 
 static inline void
