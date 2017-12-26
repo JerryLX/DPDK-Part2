@@ -1,1 +1,0 @@
-cmd_/root/dpdk-part2/lib/librte_eal/linuxapp/hns_uio/built-in.o :=  rm -f /root/dpdk-part2/lib/librte_eal/linuxapp/hns_uio/built-in.o; ar rcsD /root/dpdk-part2/lib/librte_eal/linuxapp/hns_uio/built-in.o
