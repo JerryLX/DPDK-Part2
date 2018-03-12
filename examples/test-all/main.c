@@ -156,19 +156,22 @@ static void lcore_main(void)
 	uint8_t port = 1;
     uint8_t qid;
     uint64_t cur_tsc, prev_tsc;
-    uint64_t count[16][6];
-	uint64_t count_tx[16][6];
+    uint64_t count[16][10];
+	uint64_t count_tx[16][10];
 	uint16_t nb_rx = 0, nb_tx = 0;
 	struct rte_mbuf *bufs[BURST_SIZE];
     int k;
 	//int test_port = 8;
     (void)k;
+	uint32_t enabled_port_mask;
+	printf("please input the port_mask: ");
+	k = scanf("%x", &enabled_port_mask);
     for(qid=0;qid<16;qid++) {
-		for(port=0;port<6;port++)
+		for(port=0;port<10;port++)
         count[qid][port]=0;
     }
     for(qid=0;qid<16;qid++) {
-		for(port=0;port<6;port++)
+		for(port=0;port<10;port++)
         count_tx[qid][port]=0;
     }
 
@@ -179,29 +182,31 @@ static void lcore_main(void)
         cur_tsc = rte_rdtsc();
         if(unlikely(cur_tsc-prev_tsc>timer_period)){
             prev_tsc = cur_tsc;
-            for(int i=0;i<6;i++){
-                printf("port %d rx:",i+4);
-            for(qid=0;qid<16;qid++)
-                printf("%llu ",(unsigned long long)count[qid][i]);
-            printf("\n");
-            printf("port %d tx:",i+4);
-			for(qid=0;qid<16;qid++)
-                printf("%llu ",(unsigned long long)count_tx[qid][i]);
-            printf("\n");
+            for(int i=0;i<10;i++){
+                printf("port %d rx:",i);
+				for(qid=0;qid<16;qid++)
+					printf("%llu ",(unsigned long long)count[qid][i]);
+				printf("\n");
+				printf("port %d tx:",i);
+				for(qid=0;qid<16;qid++)
+					printf("%llu ",(unsigned long long)count_tx[qid][i]);
+				printf("\n");
             }
             printf("=====================================\n");
         }
-        for(port=4;port<10;port++){
-            for (qid = 0 ; qid < 16; qid++){
-                //if(port & 1) continue;
+        for(port=0;port<10;port++){
+		if ((enabled_port_mask & (1 << port)) == 0) {
+			continue;
+	 	}       
+		for (qid = 0 ; qid < 16; qid++){
                 nb_rx = rte_eth_rx_burst(port, qid,
            			bufs, BURST_SIZE);
-           	    count[qid][port-4] += nb_rx;
+           	    count[qid][port] += nb_rx;
                 if(nb_rx == 0) continue;
 			 	
                 nb_tx = rte_eth_tx_burst(port,qid ,bufs, nb_rx);
 
-				count_tx[qid][port-4] += nb_tx;
+				count_tx[qid][port] += nb_tx;
                 if(unlikely(nb_tx<nb_rx)){
                     uint16_t buf = nb_tx;
                     for(;buf<nb_rx;buf++){
@@ -241,6 +246,11 @@ main(int argc, char *argv[])
     
 	nb_ports = rte_eth_dev_count();
     printf("num of ports: %d\n", nb_ports);
+	
+
+    
+	
+	
 	if (nb_ports < 2 || (nb_ports & 1))
 		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
 

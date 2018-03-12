@@ -106,9 +106,6 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	for (j = 0; j < nb_rx; j++){
 		dst_port[j] = em_get_dst_port(qconf, pkts_burst[j], portid);
-        //switch(pordid){
-        //case
-        //}
     }
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }

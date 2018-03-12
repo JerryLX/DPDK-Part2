@@ -62,7 +62,7 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 #endif
 		dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
 						qconf->ipv4_lookup_struct);
-		switch (portid) {
+		/* switch (portid) {
 	    case 6:
 		    dst_port = 5;
             break;
@@ -95,7 +95,8 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
             break;	 
         default:
             dst_port = portid;
-        }
+        } */
+		dst_port = portid;
 
 		if (dst_port >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port) == 0)

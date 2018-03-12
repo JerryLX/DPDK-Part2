@@ -48,8 +48,10 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 	tcp_or_udp = m->packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
 	l3_ptypes = m->packet_type & RTE_PTYPE_L3_MASK;
 
+
 	if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV4)) {
 		/* Handle IPv4 headers.*/
+			printf("%d\n", l3_ptypes);
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
 

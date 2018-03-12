@@ -73,7 +73,7 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
         //printf("ipv4\n");
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
-
+        
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
 		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
@@ -81,9 +81,9 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
 			return;
 		}
 #endif
-		 dst_port = lpm_get_ipv4_dst_port(ipv4_hdr, portid,
+		dst_port = lpm_get_ipv4_dst_port(ipv4_hdr, portid,
 						qconf->ipv4_lookup_struct);
-		switch (portid) {
+		/* switch (portid) {
 	    case 6:
 		    dst_port = 5;
             break;
@@ -116,7 +116,8 @@ l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
             break;	 	 			 
         default:
             dst_port = portid;
-        }
+        } */
+		dst_port = portid;
 		if (dst_port >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port) == 0)
 			dst_port = portid;

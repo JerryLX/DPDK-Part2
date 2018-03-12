@@ -60,7 +60,7 @@
 #endif
 
 /* the maximum number of external ports supported */
-#define MAX_SUP_PORTS 1
+#define MAX_SUP_PORTS 10
 
 #define MBUF_CACHE_SIZE	128
 #define MBUF_DATA_SIZE	RTE_MBUF_DEFAULT_BUF_SIZE
@@ -1413,6 +1413,8 @@ create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
 	nr_mbufs += nr_mbufs_per_core * nr_switch_core;
 	nr_mbufs *= nr_port;
 
+	printf("nr_mbufs=%d\n nr_mbuf_cache=%d\n mbuf_size=%d\n", nr_mbufs, nr_mbuf_cache, mbuf_size);
+	
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", nr_mbufs,
 					    nr_mbuf_cache, 0, mbuf_size,
 					    rte_socket_id());
@@ -1460,7 +1462,8 @@ main(int argc, char *argv[])
 
 	/* Get the number of physical ports. */
 	nb_ports = rte_eth_dev_count();
-
+    printf("nb_ports_num = %d\n", nb_ports);
+	
 	/*
 	 * Update the global var NUM_PORTS and global array PORTS
 	 * and get value of var VALID_NUM_PORTS according to system ports number

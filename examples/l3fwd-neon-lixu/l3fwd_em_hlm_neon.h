@@ -241,16 +241,6 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 (void)pkt;
 
 		switch (portid) {
-
-		case 0:
-		    return 1;
-            
-		case 1:
-		    return 0;
-        
-		case 2:
-		    return  2;
-
          default:
 		    return  portid;
 		}
