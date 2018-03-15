@@ -56,7 +56,7 @@
 #include "main.h"
 
 #ifndef MAX_QUEUES
-#define MAX_QUEUES 128
+#define MAX_QUEUES 32
 #endif
 
 /* the maximum number of external ports supported */
@@ -267,7 +267,10 @@ static inline int
 port_init(uint8_t port)
 {
 	struct rte_eth_dev_info dev_info;
-	struct rte_eth_conf port_conf;
+	//struct rte_eth_conf port_conf;
+    struct rte_eth_conf port_conf = {
+	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+};
 	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_txconf *txconf;
 	int16_t rx_rings, tx_rings;
@@ -277,7 +280,7 @@ port_init(uint8_t port)
 
 	/* The max pool number from dev_info will be used to validate the pool number specified in cmd line */
 	rte_eth_dev_info_get (port, &dev_info);
-
+    dev_info.max_rx_queues = 1; // mqc
 	if (dev_info.max_rx_queues > MAX_QUEUES) {
 		rte_exit(EXIT_FAILURE,
 			"please define MAX_QUEUES no less than %u in %s\n",
@@ -314,9 +317,11 @@ port_init(uint8_t port)
 		return retval;
 
 	/* Get port configuration. */
-	retval = get_eth_conf(&port_conf, num_devices);
+	/*retval = get_eth_conf(&port_conf, num_devices);
 	if (retval < 0)
-		return retval;
+		return retval;*/
+	
+	
 	/* NIC queues are divided into pf queues and vmdq queues.  */
 	num_pf_queues = dev_info.max_rx_queues - dev_info.vmdq_queue_num;
 	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
@@ -330,6 +335,7 @@ port_init(uint8_t port)
 	if (port >= rte_eth_dev_count()) return -1;
 
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
+	printf("rx_rings = %d, tx_rings = %d\n", rx_rings, tx_rings);
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0) {
@@ -1050,8 +1056,13 @@ drain_eth_rx(struct vhost_dev *vdev)
 	uint16_t rx_count, enqueue_count;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 
+	vdev->vmdq_rx_q = 0;
+	//printf("ports[0]=%d vmdq_rx_q = %d\n", ports[0], vdev->vmdq_rx_q);
 	rx_count = rte_eth_rx_burst(ports[0], vdev->vmdq_rx_q,
 				    pkts, MAX_PKT_BURST);
+	//printf("ports[0]=%d vmdq_rx_q = %d\n", ports[0], vdev->vmdq_rx_q);
+    //if (rx_count)
+    //   printf("rx_count= %d \n", rx_count);
 	if (!rx_count)
 		return;
 
@@ -1077,8 +1088,11 @@ drain_eth_rx(struct vhost_dev *vdev)
 		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
 						pkts, rx_count);
 	} else {
+		//printf("vdev->vid = %d\n", vdev->vid);
 		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 						pkts, rx_count);
+		//if (enqueue_count != 0)
+		//	printf("enqueue_count = %d\n", enqueue_count);
 	}
 	if (enable_stats) {
 		rte_atomic64_add(&vdev->stats.rx_total_atomic, rx_count);
@@ -1170,7 +1184,10 @@ switch_worker(void *arg __rte_unused)
 			}
 
 			if (likely(vdev->ready == DEVICE_RX))
+			{
+				//printf("drain_eth_rx\n");
 				drain_eth_rx(vdev);
+			}
 
 			if (likely(!vdev->remove))
 				drain_virtio_tx(vdev);
@@ -1253,6 +1270,7 @@ new_device(int vid)
 			vid);
 		return -1;
 	}
+
 	vdev->vid = vid;
 
 	if (builtin_net_driver)
@@ -1262,7 +1280,8 @@ new_device(int vid)
 	vdev->vmdq_rx_q = vid * queues_per_pool + vmdq_queue_base;
 
 	/*reset ready flag*/
-	vdev->ready = DEVICE_MAC_LEARNING;
+	//vdev->ready = DEVICE_MAC_LEARNING;
+	vdev->ready = DEVICE_RX;
 	vdev->remove = 0;
 
 	/* Find a suitable lcore to add the device. */

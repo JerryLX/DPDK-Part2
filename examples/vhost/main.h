@@ -85,7 +85,7 @@ struct vhost_dev {
 	TAILQ_ENTRY(vhost_dev) global_vdev_entry;
 	TAILQ_ENTRY(vhost_dev) lcore_vdev_entry;
 
-#define MAX_QUEUE_PAIRS	4
+#define MAX_QUEUE_PAIRS	8
 	struct vhost_queue queues[MAX_QUEUE_PAIRS * 2];
 } __rte_cache_aligned;
 

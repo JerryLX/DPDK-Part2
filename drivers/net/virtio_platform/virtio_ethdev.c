@@ -950,7 +950,7 @@ virtio_mac_table_set(struct virtio_hw *hw,
 		PMD_DRV_LOG(NOTICE, "mac table set failed: %d", err);
 }
 
-static void
+static int
 virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		    uint32_t index, uint32_t vmdq __rte_unused)
 {
@@ -978,7 +978,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		memcpy(&tbl->macs[tbl->entries++], addr, ETHER_ADDR_LEN);
 	}
 
-	virtio_mac_table_set(hw, uc, mc);
+	return virtio_mac_table_set(hw, uc, mc);
 }
 
 static void

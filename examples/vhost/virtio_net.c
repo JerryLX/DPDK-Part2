@@ -65,6 +65,7 @@ vs_vhost_net_setup(struct vhost_dev *dev)
 	rte_vhost_get_mem_table(vid, &dev->mem);
 
 	dev->nr_vrings = rte_vhost_get_vring_num(vid);
+	//dev->nr_vrings = 16; mqc
 	for (i = 0; i < dev->nr_vrings; i++) {
 		queue = &dev->queues[i];
 

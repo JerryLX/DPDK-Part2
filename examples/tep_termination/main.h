@@ -74,6 +74,7 @@ struct device_statistics {
  */
 struct vhost_dev {
 	int vid;
+    uint16_t port_id; //mqc
 	/**< Number of memory regions for gpa to hpa translation. */
 	uint32_t nregions_hpa;
 	/**< Memory region information for gpa to hpa translation. */
@@ -88,6 +89,7 @@ struct vhost_dev {
 	volatile uint8_t ready;
 	/**< Device is marked for removal from the data core. */
 	volatile uint8_t remove;
+
 } __rte_cache_aligned;
 
 /**
