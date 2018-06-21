@@ -88,6 +88,8 @@ extern "C" {
 #include <rte_bus.h>
 #include <rte_pci_platform.h>
 
+#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
+
 /** Pathname of PCI devices directory. */
 const char *pci_get_sysfs_path(void);
 

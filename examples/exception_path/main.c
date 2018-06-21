@@ -241,6 +241,8 @@ main_loop(__attribute__((unused)) void *arg)
 			const unsigned nb_rx =
 					rte_eth_rx_burst(port_ids[lcore_id], 0,
 					    pkts_burst, PKT_BURST_SZ);
+            if (nb_rx != 0)
+                printf("nb_rx = %d \n", nb_rx);
 			lcore_stats[lcore_id].rx += nb_rx;
 			for (i = 0; likely(i < nb_rx); i++) {
 				struct rte_mbuf *m = pkts_burst[i];
@@ -285,7 +287,8 @@ main_loop(__attribute__((unused)) void *arg)
 			m->next = NULL;
 			m->pkt_len = (uint16_t)ret;
 			m->data_len = (uint16_t)ret;
-			ret = rte_eth_tx_burst(port_ids[lcore_id], 0, &m, 1);
+			//ret = rte_eth_tx_burst(port_ids[lcore_id], 0, &m, 1);
+            ret = rte_eth_tx_burst(0, 0, &m, 1);
 			if (unlikely(ret < 1)) {
 				rte_pktmbuf_free(m);
 				lcore_stats[lcore_id].dropped++;

@@ -369,6 +369,7 @@ rte_pci_scan(void)
 			.matches = &matches[0],
 	};
 
+    printf("RTE_PCI_SCAN\n");
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)
 		return 0;

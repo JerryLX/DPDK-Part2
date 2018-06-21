@@ -116,6 +116,8 @@ struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
+FILE *output;
+
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
@@ -143,6 +145,22 @@ struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
 /* A tsc-based timer responsible for triggering statistics printout */
 static uint64_t timer_period = 10; /* default period is 10 seconds */
+
+
+static void nic_display_pkt(struct rte_mbuf *buf)
+{
+	uint8_t i;
+	uint8_t size = 250;
+	uint8_t* pkt_buf = buf->buf_addr;
+
+	fprintf(output, "pkt:\n");
+	for (i = 0; i < size; i++) {
+		fprintf(output, "  %02x", pkt_buf[i]);
+		if ((i != 0 && i % 16 == 0 ) || (i == size - 1))
+			fprintf(output, "\n");
+	}
+	fflush(output);
+}
 
 /* Print out statistics on packets dropped */
 static void
@@ -310,8 +328,10 @@ l2fwd_main_loop(void)
 			portid = qconf->rx_port_list[i];
 			nb_rx = rte_eth_rx_burst((uint8_t) portid, QUEUE_ID,
 						 pkts_burst, MAX_PKT_BURST);
-            printf("portid = %d queueid = %d" , portid, QUEUE_ID);
+            //printf("portid = %d queueid = %d" , portid, QUEUE_ID);
 			port_statistics[portid].rx += nb_rx;
+			for (uint8_t i = 0; i < nb_rx; i++)
+				nic_display_pkt(pkts_burst[i]);
 
 			for (j = 0; j < nb_rx; j++) {
 				m = pkts_burst[j];

@@ -38,6 +38,7 @@
 #define MODE_IDX_IN_NAME 8
 #define HNS_UIO_DEV_MAX 129
 
+#define SERVICE_TIMER_HZ (1 * HZ)
 
 struct hns_uio_ioctrl_para {
     unsigned long long index;
@@ -619,7 +620,7 @@ long hns_cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	handle = priv->ae_handle;
 	index  = uio_para.index;
 
-PRINT(KERN_ERR, "cmd: %d\n", cmd);
+//PRINT(KERN_ERR, "cmd: %d\n", cmd);
 	
     switch (cmd) {
 	case HNS_UIO_IOCTL_MAC:
@@ -653,14 +654,38 @@ PRINT(KERN_ERR, "cmd: %d\n", cmd);
         //}
         if(priv->phy)
             phy_start(priv->phy);
+		
+		(void)mod_timer(&priv->service_timer, jiffies + SERVICE_TIMER_HZ);
+		clear_bit(NIC_STATE_DOWN, &priv->state);
+		
 		break;
 	}
 	case HNS_UIO_IOCTL_DOWN:
 	{
 		if (handle->dev->ops->stop)
 			handle->dev->ops->stop(priv->ae_handle);
-
+		test_and_set_bit(NIC_STATE_DOWN, &priv->state);
+		del_timer_sync(&priv->service_timer);
 		break;
+	}
+	case HNS_UIO_IOCTL_STORE:
+	{
+		int idx;
+		idx =uio_para.value;
+        if(idx <  priv->q_num){
+		    PRINT(KERN_ERR, "from kernel :next_to_use = %d\n", (handle->qs)[idx]->rx_ring.next_to_use);
+		    PRINT(KERN_ERR, "from kernel :next_to_clean = %d\n", (handle->qs)[idx]->rx_ring.next_to_clean);
+		    (handle->qs)[idx]->rx_ring.next_to_use=*(int *)uio_para.data;
+		    (handle->qs)[idx]->rx_ring.next_to_clean=*((int *)uio_para.data+1);
+		    //PRINT(KERN_ERR, "from kernel store:next_to_use = %d\n", *(int *)uio_para.data);
+		    //PRINT(KERN_ERR, "from kernel store:next_to_clean = %d\n", *((int *)uio_para.data+1));
+		    //PRINT(KERN_ERR, "RCB_REG_FBDNUM:%d\n", RCB_REG_FBDNUM);
+        }
+        else{
+            idx -= priv->q_num;
+		    (handle->qs)[idx]->tx_ring.next_to_use=*(int *)uio_para.data;
+		    (handle->qs)[idx]->tx_ring.next_to_clean=*((int *)uio_para.data+1);
+        }
 	}
 	case HNS_UIO_IOCTL_PORT:
 	{
@@ -669,6 +694,99 @@ PRINT(KERN_ERR, "cmd: %d\n", cmd);
 				 sizeof(struct hns_uio_ioctrl_para)) != 0)
 			return UIO_ERROR;
 
+		break;
+	}
+    /*
+	case 33:
+	{
+		const char * cp;
+		int cplen;
+		const struct device_node *denode;
+		denode=priv->pdev->dev.of_node;
+        PRINT(KERN_ERR, "test point1\n");
+		cp = of_get_property(denode, "compatible", &cplen);
+        PRINT(KERN_ERR, "test point2\n");
+		if (cp == NULL){
+			PRINT(KERN_ERR, "No compatible!!!!\n");
+			uio_para.value=0;
+		}
+		else{
+			PRINT(KERN_ERR, "Get compatible success!\n");
+			uio_para.value=1;
+			memcpy(uio_para.data,cp,strlen(cp)+1);
+			PRINT(KERN_ERR, "Get compatible:%s\n", uio_para.data);
+        }
+        if (copy_to_user((void __user *)arg, &uio_para,
+                     sizeof(struct hns_uio_ioctrl_para)) != 0)
+            return UIO_ERROR;
+		break;
+	}
+     case 34:
+    {
+        const char * cp;
+        int cplen;
+        const struct device_node *denode;
+        denode=priv->dev->of_node;
+        cp = of_get_property(denode, "compatible", &cplen);
+        if (cp == NULL){
+            PRINT(KERN_ERR, "No compatible!!!!\n");
+            uio_para.value=0;
+        }
+        else{
+            PRINT(KERN_ERR, "Get compatible success!\n");
+            uio_para.value=1;
+            memcpy(uio_para.data,cp,strlen(cp)+1);
+            PRINT(KERN_ERR, "Get compatible:%s\n", uio_para.data);
+        }
+        if (copy_to_user((void __user *)arg, &uio_para,
+                sizeof(struct hns_uio_ioctrl_para)) != 0)
+            return UIO_ERROR;
+        break;
+    }
+     case 35:
+    {
+        struct property * prop;
+        const char * cp;
+        const struct device_node *denode;
+        denode=priv->pdev->dev.of_node;
+        PRINT(KERN_ERR, "test point1\n");
+        prop = of_find_property(denode, "compatible", NULL);
+        cp = of_prop_next_string(prop,NULL);
+        PRINT(KERN_ERR, "test point2\n");
+        if (cp == NULL){
+            PRINT(KERN_ERR, "No compatible!!!!\n");
+            uio_para.value=0;
+         }
+        else{
+            PRINT(KERN_ERR, "Get compatible success!\n");
+            uio_para.value=1;
+            memcpy(uio_para.data,cp,strlen(cp)+1);
+            PRINT(KERN_ERR, "Get compatible:%s\n", uio_para.data);
+        }
+        if (copy_to_user((void __user *)arg, &uio_para,
+                sizeof(struct hns_uio_ioctrl_para)) != 0)
+            return UIO_ERROR;
+        break;
+    }
+    */
+	case HNS_UIO_IOCTL_NEXT:
+	{
+		int idx;
+		idx = uio_para.value;
+        if(idx <  priv->q_num){
+		    uio_para.value=(handle->qs)[idx]->rx_ring.next_to_use;
+		    uio_para.index=(handle->qs)[idx]->rx_ring.next_to_clean;
+        }
+        else{
+            idx -= priv->q_num;
+            uio_para.value=(handle->qs)[idx]->tx_ring.next_to_use;
+		    uio_para.index=(handle->qs)[idx]->tx_ring.next_to_clean;
+        }
+        PRINT(KERN_ERR, "uio_para.index = %d\n", (int)uio_para.index);
+		PRINT(KERN_ERR, "uio_para.value = %d\n", (int)uio_para.value);
+		if (copy_to_user((void __user *)arg, &uio_para,
+				 sizeof(struct hns_uio_ioctrl_para)) != 0)
+			return UIO_ERROR;
 		break;
 	}
 	case HNS_UIO_IOCTL_VF_MAX:
@@ -887,6 +1005,16 @@ void hns_uio_unregister_cdev(void)
 
 	char_dev_flag--;
 }
+
+
+
+
+
+//static void hns_uio_service_task(struct net_device *dev)
+//{
+//	struct rte_uio_platform_dev *priv = netdev_priv(netdev);
+//	hns_uio_update_link_status(priv->netdev);
+//}
 
 /*static int hns_nic_phy_match(struct device *dev, void *phy_fwnode)
 {
@@ -1145,16 +1273,63 @@ hnsuio_remap_memory(struct platform_device *dev, struct uio_info *info)
 
 	if (state != priv->link) {
 		if (state) {
-			netif_carrier_on(netdev);
-			netif_tx_wake_all_queues(netdev);
+//			netif_carrier_on(netdev);
+//			netif_tx_wake_all_queues(netdev);
 			netdev_info(netdev, "link up\n");
 		} else {
-			netif_carrier_off(netdev);
+//			netif_carrier_off(netdev);
 			netdev_info(netdev, "link down\n");
 		}
 		priv->link = state;
 	}
 } 
+
+static void hns_uio_update_link_status(struct net_device *netdev)
+{
+	struct rte_uio_platform_dev *priv = netdev_priv(netdev);
+	struct hnae_handle *h = priv->ae_handle;
+	if (h->phy_dev) {
+		if (h->phy_if != PHY_INTERFACE_MODE_XGMII)
+			return;
+
+		(void)genphy_read_status(h->phy_dev);
+	}
+	hns_nic_adjust_link(netdev);
+}
+
+static void hns_uio_service_event_complete(struct rte_uio_platform_dev *priv)
+{
+	WARN_ON(!test_bit(NIC_STATE_SERVICE_SCHED, &priv->state));
+	
+	smp_mb__before_atomic();
+	clear_bit(NIC_STATE_SERVICE_SCHED, &priv->state);
+}
+
+static void hns_uio_service_task(struct work_struct *work)
+{
+	struct rte_uio_platform_dev *priv = container_of(work, struct rte_uio_platform_dev, service_task);
+	struct hnae_handle *h = priv->ae_handle;
+	hns_uio_update_link_status(priv->netdev);
+	h->dev->ops->update_led_status(h);
+	hns_uio_service_event_complete(priv);
+}
+
+static void hns_uio_task_schedule(struct rte_uio_platform_dev *priv)
+{
+	if (!test_bit(NIC_STATE_DOWN, &priv->state) &&
+	    !test_bit(NIC_STATE_REMOVING, &priv->state) &&
+	    !test_and_set_bit(NIC_STATE_SERVICE_SCHED, &priv->state))
+		(void)schedule_work(&priv->service_task);
+}
+
+static void hns_uio_service_timer(unsigned long data)
+{
+	struct rte_uio_platform_dev *priv = (struct rte_uio_platform_dev *)data;
+
+	(void)mod_timer(&priv->service_timer, jiffies + SERVICE_TIMER_HZ);
+
+	hns_uio_task_schedule(priv);
+}
 
 static int 
 hns_nic_init_phy(struct net_device *netdev, struct hnae_handle *h)
@@ -1435,7 +1610,6 @@ hns_uio_probe(struct platform_device *pdev)
             return err;
     }
    
-    PRINT(KERN_ERR,"get here\n");
     do {
         /* get handle */
         handle = hnae_get_handle(dev, fwnode, port, &hns_uio_nic_bops);
@@ -1526,6 +1700,12 @@ hns_uio_probe(struct platform_device *pdev)
         hns_ethtool_set_ops(netdev);
         SET_NETDEV_DEV(netdev, dev);
 
+		setup_timer(&udev->service_timer, hns_uio_service_timer, (unsigned long)udev);
+		INIT_WORK(&udev->service_task, hns_uio_service_task);
+		set_bit(NIC_STATE_SERVICE_INITED, &udev->state);
+		clear_bit(NIC_STATE_SERVICE_SCHED, &udev->state);
+		set_bit(NIC_STATE_DOWN, &udev->state);		
+		
         err = hns_nic_init_phy(netdev, handle);
         if(err){
             PRINT(KERN_ERR, "cannot init phy");
@@ -1611,6 +1791,10 @@ hns_uio_remove(struct platform_device *dev)
 
         if (priv->phy)
             phy_disconnect(priv->phy);
+
+		set_bit(NIC_STATE_REMOVING, &priv->state);
+		(void)cancel_work_sync(&priv->service_task);
+		
         free_netdev(priv->netdev);
         hns_user_put_handle(priv->ae_handle);
         uio_dev_info[i] = NULL;

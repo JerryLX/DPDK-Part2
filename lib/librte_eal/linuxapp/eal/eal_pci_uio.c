@@ -317,6 +317,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	struct pci_map *maps;
 
 	loc = &dev->addr;
+    (void) loc;
 	maps = uio_res->maps;
 
 	/* update devname for mmap  */
@@ -325,6 +326,9 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 			pci_get_sysfs_path(),
 			loc->domain, loc->bus, loc->devid,
 			loc->function, res_idx);
+
+    /* use uioX instead of resourceX */
+    //snprintf(devname, sizeof(devname),"%s",uio_res->path);
 
 	/* allocate memory to keep path */
 	maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
@@ -337,6 +341,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	/*
 	 * open resource file, to mmap it
 	 */
+	RTE_LOG(ERR, EAL, "BAR:%s\n",devname);
 	fd = open(devname, O_RDWR);
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
@@ -348,8 +353,26 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	if (pci_map_addr == NULL)
 		pci_map_addr = pci_find_max_end_va();
 
+
+
+	RTE_LOG(ERR, EAL, "phyaddr: 0x%016lx\n",
+				dev->mem_resource[res_idx].phys_addr);
+	RTE_LOG(ERR, EAL, "logic_addr_assigned_start: %p\n",
+				pci_map_addr);
+	RTE_LOG(ERR, EAL, "map_idx: %d\n",
+				map_idx);
+	RTE_LOG(ERR, EAL, "res_idx: %d\n",
+				res_idx);
+	RTE_LOG(ERR, EAL, "addr_len: 0x%016lx\n",
+				dev->mem_resource[res_idx].len);
 	mapaddr = pci_map_resource(pci_map_addr, fd, 0,
-			(size_t)dev->mem_resource[res_idx].len, 0);
+			(size_t)dev->mem_resource[res_idx].len,0);// PAGE_SIZE*map_idx);
+	RTE_LOG(ERR, EAL, "logic_addr_actual: %p\n",
+				mapaddr);
+	RTE_LOG(ERR, EAL,"The pagesize: %ld\n", PAGE_SIZE);
+
+
+
 	close(fd);
 	if (mapaddr == MAP_FAILED)
 		goto error;

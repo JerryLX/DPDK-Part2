@@ -1687,7 +1687,7 @@ struct rte_eth_dev {
 	const struct eth_driver *driver;/**< Driver for this device */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
-    struct rte_platform_device *platform_dev; /**< Backing device */
+    struct rte_platform_device *platform_dev; /**< Backing device */  //do we still need this? by lx
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
 	/** User application callbacks for NIC interrupts */
 	struct rte_eth_dev_cb_list link_intr_cbs;

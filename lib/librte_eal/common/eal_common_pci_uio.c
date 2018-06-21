@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #include <rte_eal.h>
 #include <rte_tailq.h>
@@ -68,7 +69,11 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			/*
 			 * open devname, to mmap it
 			 */
+
+			printf("BAR:%s\n",uio_res->maps[i].path);
+			RTE_LOG(ERR, EAL, "BAR:%s\n",uio_res->maps[i].path);
 			fd = open(uio_res->maps[i].path, O_RDWR);
+
 			if (fd < 0) {
 				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 					uio_res->maps[i].path, strerror(errno));
@@ -123,18 +128,21 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return pci_uio_map_secondary(dev);
 
+	RTE_LOG(ERR, EAL, "reaching bar map1\n");
 	/* allocate uio resource */
 	ret = pci_uio_alloc_resource(dev, &uio_res);
 	if (ret)
 		return ret;
 
+	RTE_LOG(ERR, EAL, "reaching bar map2\n");
 	/* Map all BARs */
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
 		/* skip empty BAR */
 		phaddr = dev->mem_resource[i].phys_addr;
+		RTE_LOG(ERR, EAL, "mapping bar%d\n",i);
 		if (phaddr == 0)
 			continue;
-
+		RTE_LOG(ERR, EAL, "valid bar%d\n",i);
 		ret = pci_uio_map_resource_by_index(dev, i,
 				uio_res, map_idx);
 		if (ret){

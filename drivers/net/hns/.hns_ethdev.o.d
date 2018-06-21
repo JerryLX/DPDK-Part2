@@ -42,18 +42,20 @@ dep_hns_ethdev.o = hns_ethdev.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include/stdint.h /usr/include/stdint.h \
- /usr/include/aarch64-linux-gnu/bits/wchar.h /usr/include/unistd.h \
+ /usr/include/aarch64-linux-gnu/bits/wchar.h /usr/include/string.h \
+ /usr/include/xlocale.h /usr/include/aarch64-linux-gnu/bits/string.h \
+ /usr/include/aarch64-linux-gnu/bits/string2.h /usr/include/stdlib.h \
+ /usr/include/aarch64-linux-gnu/bits/string3.h /usr/include/unistd.h \
  /usr/include/aarch64-linux-gnu/bits/posix_opt.h \
  /usr/include/aarch64-linux-gnu/bits/environments.h \
  /usr/include/aarch64-linux-gnu/bits/confname.h /usr/include/getopt.h \
  /usr/include/aarch64-linux-gnu/bits/unistd.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_common.h \
- /usr/include/stdlib.h /usr/include/aarch64-linux-gnu/bits/waitflags.h \
+ /usr/include/aarch64-linux-gnu/bits/waitflags.h \
  /usr/include/aarch64-linux-gnu/bits/waitstatus.h /usr/include/alloca.h \
  /usr/include/aarch64-linux-gnu/bits/stdlib-bsearch.h \
  /usr/include/aarch64-linux-gnu/bits/stdlib-float.h \
  /usr/include/aarch64-linux-gnu/bits/stdlib.h /usr/include/ctype.h \
- /usr/include/xlocale.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include-fixed/limits.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include-fixed/syslimits.h \
  /usr/include/limits.h /usr/include/aarch64-linux-gnu/bits/posix1_lim.h \
@@ -91,9 +93,6 @@ dep_hns_ethdev.o = hns_ethdev.c /usr/include/stdc-predef.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memzone.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memcpy.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memcpy_64.h \
- /usr/include/string.h /usr/include/aarch64-linux-gnu/bits/string.h \
- /usr/include/aarch64-linux-gnu/bits/string2.h \
- /usr/include/aarch64-linux-gnu/bits/string3.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_memcpy.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_prefetch.h \
  /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_prefetch_64.h \

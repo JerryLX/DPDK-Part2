@@ -39,7 +39,22 @@ enum  {
     HNS_UIO_IOCTL_LINK_UPDATE,
     HNS_UIO_IOCTL_INIT_MAC,
     HNS_UIO_IOCTL_PROMISCUOUS,
-    HNS_UIO_IOCTL_TSO
+    HNS_UIO_IOCTL_TSO,
+    HNS_UIO_IOCTL_NEXT,
+	HNS_UIO_IOCTL_STORE
+};
+
+enum hns_nic_state {
+	NIC_STATE_TESTING = 0,
+	NIC_STATE_RESETTING,
+	NIC_STATE_REINITING,
+	NIC_STATE_DOWN,
+	NIC_STATE_DISABLED,
+	NIC_STATE_REMOVING,
+	NIC_STATE_SERVICE_INITED,
+	NIC_STATE_SERVICE_SCHED,
+	NIC_STATE2_RESET_REQUESTED,
+	NIC_STATE_MAX
 };
 
 struct char_device {
@@ -68,9 +83,13 @@ struct rte_uio_platform_dev {
     uint16_t bd_number;
     struct net_device_stats nstats;
     int link; //link state
+	unsigned long state;
 
 	struct platform_device *pdev;
     const struct fwnode_handle *fwnode;
+	
+	struct timer_list service_timer;
+	struct work_struct service_task;
     
 };
 void hns_ethtool_set_ops(struct net_device *ndev);

@@ -62,6 +62,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
+    printf("esp inbound!");
 	ip4 = rte_pktmbuf_mtod(m, struct ip *);
 	if (likely(ip4->ip_v == IPVERSION))
 		ip_hdr_len = ip4->ip_hl * 4;

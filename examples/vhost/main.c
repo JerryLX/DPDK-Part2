@@ -1107,7 +1107,7 @@ drain_virtio_tx(struct vhost_dev *vdev)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	uint16_t count;
-	uint16_t i;
+    uint16_t i;
 
 	if (builtin_net_driver) {
 		count = vs_dequeue_pkts(vdev, VIRTIO_TXQ, mbuf_pool,
@@ -1548,6 +1548,10 @@ main(int argc, char *argv[])
 
 	if (dequeue_zero_copy)
 		flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
+    
+
+     if (builtin_net_driver)
+         printf("builtin_net_driver\n");
 
 	/* Register vhost user driver to handle vhost messages. */
 	for (i = 0; i < nb_sockets; i++) {

@@ -72,6 +72,7 @@ struct rte_platform_device {
     char *name;      /**< device name. */
     int uio_num;     /**< uio device number */
     /**< UIO Memory Resource. */
+    char *compatible;  /*dts compatible*/
     struct rte_mem_resource mem_resource[PLATFORM_MAX_RESOURCE];
     struct rte_platform_driver  *driver;      /**< Associated driver */
     struct rte_intr_handle       intr_handle;
@@ -274,9 +275,7 @@ void rte_platform_register(struct rte_platform_driver *driver);
 RTE_INIT(platforminitfn_ ##nm); \
 static void platforminitfn_ ##nm(void) \
 {\
-	printf("RTE_PMD_REGISTER_PLATFORM!!!!!!!!!!!!!!\n");\
 	(platform_drv).driver.name = RTE_STR(nm);\
-	printf("driver name: %s", RTE_STR(nm)); \
 	rte_platform_register(&platform_drv); \
 } \
 RTE_PMD_EXPORT_NAME(nm, __COUNTER__)

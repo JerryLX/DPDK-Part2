@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdint.h>
+#include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <rte_common.h>
@@ -67,11 +68,6 @@ get_v2rx_desc_bnum(uint32_t bnum_flag, uint16_t *out_bnum)
             HNS_RXD_BUFNUM_M, HNS_RXD_BUFNUM_S) + 1;
 }
 
-//static bool
-//is_fe(uint32_t flag)
-//{
-//    return ((flag & (1 << HNS_RXD_FE_B)) != 0);
-//}
 
 /**
  * Read value from q->iobase
@@ -104,38 +100,13 @@ reg_write(void *io_base, unsigned long long offset, uint16_t queue_id,
    // rte_wmb();
 }
 
-//static int
-//dsaf_reg_read(unsigned int uio_index, unsigned long long offset, 
-//         int fd, uint16_t queue_id, bool rxtx)
-//{
-//    struct hns_uio_ioctrl_para args;
-//    args.index = uio_index;
-//    args.cmd = offset + HNS_RCB_REG_OFFSET * (queue_id);
-//    if(rxtx) args.cmd += HNS_RCB_TX_REG_OFFSET;
-//    if(ioctl(fd, HNS_UIO_IOCTL_REG_READ, &args) < 0) {
-//        PMD_INIT_LOG(ERR, "get value failed, offset: %llu\n!", offset);
-//        return -EINVAL;
-//    }
-//    return args.value;
-//}
-//
-//static int
-//dsaf_reg_write(unsigned int uio_index, unsigned long long offset,
-//        unsigned long long value, int fd, uint16_t queue_id, bool rxtx)
-//{
-//    struct hns_uio_ioctrl_para args;
-//    args.index = uio_index;
-//    args.cmd = offset + HNS_RCB_REG_OFFSET * (queue_id);
-//    if(rxtx) args.cmd += HNS_RCB_TX_REG_OFFSET;
-//    args.value = value;
-//    if(ioctl(fd, HNS_UIO_IOCTL_REG_WRITE, &args) < 0) {
-//        printf("write error!\n");
-//        PMD_INIT_LOG(ERR, "write value failed, offset: %llu\n!", offset);
-//        return -EINVAL;
-//    }
-//    return 0;
-//}
 
+/**
+ *free all rx/tx queues of the dev
+ *
+ * checked by lyz
+ * 2018/6/20
+ */
 static void
 hns_dev_free_queues(struct rte_eth_dev *dev)
 {
@@ -149,7 +120,10 @@ hns_dev_free_queues(struct rte_eth_dev *dev)
         dev->data->tx_queues[i] = NULL;
     }
 }
-
+/**
+ *not used
+ *
+ * **/
 static int
 eth_hns_reta_update(struct rte_eth_dev *dev, 
         struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -161,6 +135,10 @@ eth_hns_reta_update(struct rte_eth_dev *dev,
     return 0;
 }
 
+
+/**
+ *not used
+ */
 static int
 eth_hns_reta_query(struct rte_eth_dev *dev,
         struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -172,7 +150,12 @@ eth_hns_reta_query(struct rte_eth_dev *dev,
     return 0;
 }
 
-
+/**
+ * get supported packet types
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static const uint32_t *
 eth_hns_supported_ptypes_get(struct rte_eth_dev *dev)
 {
@@ -210,7 +193,9 @@ eth_hns_supported_ptypes_get(struct rte_eth_dev *dev)
 
 /**
  * DPDK callback to start the device.
- *
+ * 
+ * checked by lyz
+ * 2018/6/19
  */
 static int
 eth_hns_start(struct rte_eth_dev *dev)
@@ -220,11 +205,6 @@ eth_hns_start(struct rte_eth_dev *dev)
 	//printf("eth_hns_start\n");
     int uio_index = hns->uio_index;
     args.index = uio_index;
-    if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_MAC, &args) < 0) {
-        PMD_INIT_LOG(ERR, "Set mac addr failed!");
-        return -EINVAL;
-    }
-	//printf("ioctl_MAC\n");
     if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_UP, &args) < 0) {
         PMD_INIT_LOG(ERR, "Open dev failed!");
         return -EINVAL;
@@ -233,6 +213,12 @@ eth_hns_start(struct rte_eth_dev *dev)
     return 0;
 }
 
+/**
+ * set mac addr of the nic with a specific value
+ *
+ * checked by lyz
+ * 2018/06/19
+ */
 static void
 eth_hns_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
@@ -247,19 +233,73 @@ eth_hns_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
     }
 }
 
+/**
+ * stop the device
+ * store the tx/rx queue pointer before stop
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 eth_hns_stop(struct rte_eth_dev *dev)
 {
+    printf("In Device STOP!\n");
     struct hns_adapter *hns = dev->data->dev_private;
     struct hns_uio_ioctrl_para args;
     int uio_index = hns->uio_index;
+	int i;
+	int next_to_use;
+	int next_to_clean;
+	args.index = uio_index;
+	struct hns_rx_queue *rxq;
+	struct hns_tx_queue *txq;
 
-    args.index = uio_index;
-    if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_DOWN, &args) < 0) {
-        PMD_INIT_LOG(ERR, "Stop dev failed!");
+
+	//link down first	
+	if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_DOWN, &args) < 0) {
+			printf("Device STOP FAILED!\n");
+			PMD_INIT_LOG(ERR, "Stop dev failed!");
+	}
+
+    //store all rx pointer
+	for(i = 0; i<dev->data->nb_rx_queues; i++){
+		rxq = dev->data->rx_queues[i];
+        next_to_use= rxq->next_to_use;
+		next_to_clean = rxq->next_to_clean;
+		memcpy(args.data,&next_to_use,4);
+		memcpy(args.data+4,&next_to_clean,4);
+		args.value=rxq->queue_id;
+		if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_STORE, &args) < 0) {
+			printf("Device STORE FAILED!\n");
+			PMD_INIT_LOG(ERR, "Store dev failed!");
+		}
     }
+
+
+	//store all tx pointer 
+	for(i = 0; i<dev->data->nb_tx_queues; i++){
+		txq = dev->data->tx_queues[i];
+        next_to_use= txq->next_to_use;
+//		next_to_clean = txq->next_to_clean;
+		memcpy(args.data,&next_to_use,4);
+//		memcpy(args.data+4,&next_to_clean,4);
+		args.value=txq->queue_id + dev->data->nb_tx_queues;
+		if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_STORE, &args) < 0) {
+			printf("Device STORE FAILED!\n");
+			PMD_INIT_LOG(ERR, "Store dev failed!");
+		}
+    }
+	
+    printf("Device STOP!\n");
 }
 
+
+/**
+ * stop the device and then close it
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 eth_hns_close(struct rte_eth_dev *dev)
 {   
@@ -269,6 +309,13 @@ eth_hns_close(struct rte_eth_dev *dev)
     hns_dev_free_queues(dev);
 }
 
+
+/**
+ * get status of the device
+ * (not used yet)
+ * ?????---> but ioctl did not return any data
+ * 2018/06/20 open
+ */
 static int
 eth_hns_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
@@ -301,6 +348,13 @@ eth_hns_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 }
 
+
+/**
+ * set mtu of the device
+ *
+ * checked by lyz
+ * 2018/6/20
+ */
 static int
 eth_hns_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
@@ -318,6 +372,12 @@ eth_hns_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
     return 0;
 }
 
+/**
+ * reset hns_stats
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 eth_hns_stats_reset(struct rte_eth_dev *dev)
 {
@@ -326,27 +386,16 @@ eth_hns_stats_reset(struct rte_eth_dev *dev)
     memset(stats, 0, sizeof(struct hns_stats));
 }
 
+/**
+ * get hns_stats info
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 eth_hns_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 {
     struct hns_adapter *hns = dev->data->dev_private;
-//    int uio_index = hns->uio_index;
-//    unsigned long long p[256];
-//    struct hns_uio_ioctrl_para *args = 
-//        (struct hns_uio_ioctrl_para *)p;
-//
-//    args->index = uio_index;
-//    if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_GET_STAT, p) < 0) {
-//        PMD_INIT_LOG(ERR, "Get stat failed!");
-//    }
-//
-//    rte_stats->ipackets  = p[0];
-//    rte_stats->opackets  = p[1];
-//    rte_stats->ibytes    = p[2];
-//    rte_stats->obytes    = p[3];
-//    rte_stats->imissed   = p[6];
-//    rte_stats->ierrors   = p[4];
-//    rte_stats->oerrors   = p[5];
     struct hns_stats *stats = &(hns->stats);
     rte_stats->ipackets  = stats->rx_pkts;
     rte_stats->opackets  = stats->tx_pkts;
@@ -362,7 +411,10 @@ eth_hns_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
  * @param dev
  *      Pointer to Ethernet device structure.
  * @param[out] info
- *      Info structure output buffer.
+ *      Info structure output bufferi.
+ *
+ * checked by lyz
+ * 2018/06/20
  */
 static void
 eth_hns_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
@@ -395,6 +447,9 @@ eth_hns_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
     info->vmdq_queue_num = 1;
 }
 
+/**
+ * not used
+ */
 static int
 eth_hns_configure(struct rte_eth_dev *dev)
 {
@@ -402,6 +457,10 @@ eth_hns_configure(struct rte_eth_dev *dev)
     return 0;
 }
 
+
+/**
+ * not used
+ */
 static void
 eth_hns_allmulticast_enable(struct rte_eth_dev *dev)
 {
@@ -410,6 +469,9 @@ eth_hns_allmulticast_enable(struct rte_eth_dev *dev)
 
 /**
  * Enable promiscuous mode
+ *
+ * checked by lyz
+ * 2018/06/20
  */
 static void
 eth_hns_promisc_enable(struct rte_eth_dev *dev)
@@ -484,6 +546,14 @@ eth_hns_tso_disable(struct rte_eth_dev *dev)
  *  Receive unit
  *
  * *****************************************/
+
+
+/**
+ * release all mbufs in rx queue
+ * 
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 hns_rx_queue_release_mbufs(struct hns_rx_queue *rxq)
 {
@@ -505,6 +575,8 @@ hns_rx_queue_release_mbufs(struct hns_rx_queue *rxq)
  * @param rxq
  *      RX queue pointer
  *
+ * checked by lyz
+ * 2018/06/20
  */
 void
 eth_hns_rx_queue_release(void *queue) {
@@ -594,6 +666,8 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
  * @param cleand_count
  *      Number of cleaned desc
  *
+ * checked by lyz
+ * 2018/06/20
  */
 static void
 hns_clean_rx_buffers(struct hns_rx_queue *rxq, int cleaned_count)
@@ -636,7 +710,8 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
     struct hns_adapter *hns = dev->data->dev_private;
     struct hns_rx_queue *rxq;
     int i;
-
+	int num;
+	struct hns_uio_ioctrl_para args;
 //#ifdef OPTIMIZATION
 //    char cache_ring_name[64];
 //#endif
@@ -647,7 +722,10 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
         eth_hns_rx_queue_release(dev->data->rx_queues[idx]);
         dev->data->rx_queues[idx] = NULL;
     } 
+	
 
+	
+	
     rxq = rte_zmalloc("ethdev RX queue", sizeof(struct hns_rx_queue),
             RTE_CACHE_LINE_SIZE);
     if(rxq == NULL){
@@ -659,6 +737,9 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
     rxq->queue_id = idx;
     rxq->rx_ring = hns->rx_desc[idx];
 
+	num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
+	
+	
     if(conf == NULL || conf->rx_free_thresh <= 0)
         rxq->rx_free_thresh = DEFAULT_RX_FREE_THRESH;
     else
@@ -675,20 +756,6 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
         return -ENOMEM;
     }
     
-//#ifdef OPTIMIZATION
-//    snprintf(cache_ring_name, 64, "Port%d RXQ%d Cache",dev->data->port_id, idx);
-//    printf("%s\n",cache_ring_name);
-//    rxq->cache_ring = rte_ring_create(cache_ring_name, 256, socket, 0);
-//    for(i = 0; i < 256; i++){
-//        struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
-//        if(!mbuf){
-//            printf("no more mbuf!\n");
-//            return -1;
-//        }
-//        mbuf->cache_ring = rxq->cache_ring;
-//        rte_ring_enqueue(rxq->cache_ring,(void *)mbuf);
-//    }
-//#endif
     for(i = 0;i<rxq->nb_rx_desc;i++){
         struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
         if(!mbuf){
@@ -700,17 +767,30 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 //        mbuf->cache_ring = rxq->cache_ring;
 //#endif
         rxq->sw_ring[i].mbuf = mbuf;
+		rxq->rx_ring[i].addr = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(mbuf));
+		rxq->rx_ring[i].rx.ipoff_bnum_pid_flag = 0;
     }
 
 
     PMD_INIT_LOG(DEBUG, "sw_ring=%p", rxq->sw_ring);
-    rxq->next_to_use = 0;
-    rxq->next_to_clean = 0;
+	
+	
+	//set queue num
+	int uio_index = hns->uio_index;
+	args.index = uio_index;
+	args.value = idx;
+	if(ioctl(hns->cdev_fd, HNS_UIO_IOCTL_NEXT, &args) < 0) {
+        PMD_INIT_LOG(ERR, "Get next no. failed!");
+        return -EIO;
+	}
+	rxq->next_to_use = (unsigned int)args.value;
+    rxq->next_to_clean = ((unsigned int)args.index+num)%(rxq->nb_rx_desc);
     rxq->nb_rx_hold = 0;
     rxq->pkt_first_seg = NULL;
     rxq->pkt_last_seg = NULL;
     rxq->hns = hns;
     rxq->port_id = dev->data->port_id; 
+	hns_clean_rx_buffers(rxq, num);
     return 0;
 }
 
@@ -726,6 +806,14 @@ eth_hns_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
  *
  * @return
  *   Number of packets successfully received (<= nb_pkts).
+ */
+
+
+
+
+/**
+ * not used
+ *
  */
 static inline void
 hns_rxq_realloc_mbuf(struct hns_rx_queue *rx_queue,uint16_t idx){
@@ -755,6 +843,11 @@ hns_rxq_realloc_mbuf(struct hns_rx_queue *rx_queue,uint16_t idx){
 	}
 	
 }
+
+
+/**
+ * not used
+ */
 
 //收包函数，收取nb_pkts个描述符，如果某个描述符对应着分片的包，就按顺序在split_packet数组对应位置填上标记位
 static inline uint16_t
@@ -847,18 +940,6 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* avoid compiler reorder optimization */
-		rte_compiler_barrier();                                               //这个不知道干嘛的。。。照着写。
-		
-		/* pkt 3,4 shift the pktlen field to be 16-bit aligned
-		
-		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};                          //这个用于16-bit aligned，没怎么看懂...
-		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
-					    len_shl);
-		descs[3] = vreinterpretq_u64_u32(len3);
-		uint32x4_t len2 = vshlq_u32(vreinterpretq_u32_u64(descs[2]),
-					    len_shl);
-		descs[2] = vreinterpretq_u64_u32(len2); */                            //----------这段对齐的作用还没搞清楚,不知道对应该怎么改。
-		
 		
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
 		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
@@ -882,13 +963,6 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 		stat = vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 1);            //stat就是[h0,h1,h2,h3]
 		
 		
-		/* pkt 1,2 shift the pktlen field to be 16-bit aligned
-		uint32x4_t len1 = vshlq_u32(vreinterpretq_u32_u64(descs[1]),
-					    len_shl);
-		descs[1] = vreinterpretq_u64_u32(len1);
-		uint32x4_t len0 = vshlq_u32(vreinterpretq_u32_u64(descs[0]),
-					    len_shl);
-		descs[0] = vreinterpretq_u64_u32(len0);*/              		        //还是那个对齐操作，又来了。。
 		
 		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
 		pkt_mb2 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[1]), shuf_msk);
@@ -968,7 +1042,10 @@ _recv_raw_pkts_vec(struct hns_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 
-
+/**
+ *not used
+ *
+ */
 static inline uint16_t
 reassemble_packets(struct hns_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 		   uint16_t nb_bufs, uint8_t *split_flags)
@@ -1013,7 +1090,14 @@ reassemble_packets(struct hns_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	return pkt_idx;
 }
 
-
+/**
+ * receive packets from queue
+ *
+ * (one error)
+ * checked by lyz
+ * 2018/06/20
+ * 
+ */
 static uint16_t eth_hns_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	 struct hns_rx_queue *rxq;       //RX queue 
@@ -1097,6 +1181,7 @@ next_desc:
             //rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(rxm));
             rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
         rxdp->addr = dma_addr;
+		rxdp->rx.ipoff_bnum_pid_flag = 0; 
 
         if(  first_seg == NULL){
             //this is the first seg
@@ -1133,29 +1218,19 @@ next_desc:
         if(current_num < bnum) {
             last_seg = rxm;
             current_num++;
+            if(nb_hold >= num) break;
             goto next_desc;
         }
         hns->stats.rx_pkts++;
         bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
-       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
-       // printf("RX ip offset= %u",ip_offset);
-        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
-        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
-        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
         
         rxm->next = NULL;
-        //rte_packet_prefetch((char *)first_seg->buf_addr + first_seg->data_off);
+        
         first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd.rx.ipoff_bnum_pid_flag);
         rx_pkts[nb_rx++] = first_seg;
         first_seg = NULL;
         continue;
-        //current_num=0;
 
-       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
-       // printf("RX ip offset= %u",ip_offset);
-        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
-        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
-        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
 pkt_err:
         printf("pkt err in recv\n");
         rte_pktmbuf_free_seg(rxm);
@@ -1167,198 +1242,14 @@ pkt_err:
     rxq->current_num = current_num;
     hns_clean_rx_buffers(rxq, nb_hold);
     return nb_rx;
-    
-//    if(1){
-//    struct hns_rx_queue *rxq;       //RX queue 
-//    struct hnae_desc *rx_ring;      //RX ring (desc)
-//    struct hns_rx_entry *sw_ring;
-//    struct hns_rx_entry *rxe;
-//    struct hnae_desc *rxdp;         //pointer of the current desc
-//    struct rte_mbuf *first_seg;
-//    struct rte_mbuf *last_seg;
-//    struct hnae_desc rxd;           //current desc
-//    struct rte_mbuf *nmb;           //pointer of the new mbuf
-//    struct rte_mbuf *rxm;
-//    struct hns_adapter *hns;
-//
-//    uint64_t dma_addr;
-//    uint16_t rx_id;
-//    uint16_t nb_hold;
-//	uint16_t nb_rx;
-//    uint16_t data_len;
-//    uint16_t pkt_len;
-//    int num;                   //num of desc in ring
-//    uint16_t bnum;
-//    uint32_t bnum_flag;
-//    uint16_t current_num;
-//    int length;
-//
-////#ifdef OPTIMIZATION
-////    void *nmb_buf[1];
-////#endif
-//   // uint8_t ip_offset;
-////    unsigned long long value;
-//
-//    nb_rx  =0;
-//    nb_hold = 0;
-//	rxq = rx_queue;
-//    hns = rxq->hns;
-//    rx_id = rxq->next_to_clean;
-//    rx_ring = rxq->rx_ring;
-//    first_seg = rxq->pkt_first_seg;
-//    last_seg = rxq->pkt_last_seg;
-//    current_num = rxq->current_num;
-//    sw_ring = rxq->sw_ring;
-//    //get num of packets in desc ring
-//    num = reg_read(hns->io_base, RCB_REG_FBDNUM, rxq->queue_id, 0);
-//    while(nb_rx < nb_pkts && nb_hold < num ){
-//        //printf("recv in queue:%d\n",num);
-//next_desc:
-//        
-//        if((rx_id & 0x3) == 0){
-//            rte_hns_prefetch(&rx_ring[rx_id]);
-//            rte_hns_prefetch(&sw_ring[rx_id]);
-//        }
-//        rxdp = &rx_ring[rx_id];
-//        rxd = *rxdp;
-//        rxe = &sw_ring[rx_id];
-//
-//        nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
-//        if (nmb == NULL){
-//            PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-//                        "queue_id=%u", (unsigned) rxq->port_id,
-//                        (unsigned) rxq->queue_id);
-//            rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
-//            break;
-//        }
-//        nb_hold++;
-//        rx_id++;
-//        if(rx_id == rxq->nb_rx_desc) {
-//            rx_id = 0;
-//        }
-//        
-//        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
-//        length = rte_le_to_cpu_16(rxd.rx.pkt_len); 
-//        get_v2rx_desc_bnum(bnum_flag, &bnum);
-//        
-//      /*  if((rx_id & 0x3) == 0){
-//            rte_hns_prefetch(&rx_ring[rx_id]);
-//            rte_hns_prefetch(&sw_ring[rx_id]);
-//        }*/
-//
-//        rte_hns_prefetch(rxe->mbuf);
-//       // rte_hns_prefetch(sw_ring[rx_id].mbuf);
-//        rxm = rxe->mbuf;
-//        rxe->mbuf = nmb;
-//
-//        dma_addr = 
-//            //rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(rxm));
-//            rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
-//        rxdp->addr = dma_addr;
-//
-//        if(first_seg == NULL){
-//            //this is the first seg
-//            first_seg = rxm;
-//            first_seg-> nb_segs = bnum;
-//            first_seg->vlan_tci = 
-//                rte_le_to_cpu_16(hnae_get_field(rxd.rx.vlan_cfi_pri,HNS_RXD_VLANID_M, HNS_RXD_VLANID_S));
-//            if(length <= HNS_RX_HEAD_SIZE){
-//                if(unlikely(bnum != 1)){
-//                    goto pkt_err;
-//                }
-//            } else{
-//                if(unlikely(bnum >= (int)MAX_SKB_FRAGS)){
-//                    goto pkt_err;
-//                } 
-//            }
-//            current_num = 1;
-//        }else{
-//            //this is not the first seg
-//            last_seg->next = rxm;
-//        }
-//        
-//        /* Initialize the returned mbuf */
-//        pkt_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.pkt_len));
-//        data_len = (uint16_t) (rte_le_to_cpu_16(rxd.rx.size)); 
-//        rxm->data_off = RTE_PKTMBUF_HEADROOM;
-//        rxm->data_len = data_len;
-//        rxm->pkt_len = pkt_len;
-//        //printf("data_len:%d,%d\n",data_len,pkt_len);
-//        rxm->port = rxq->port_id;
-//        rxm->hash.rss = rxd.rx.rss_hash;
-//        
-//        hns->stats.rx_bytes += data_len;
-//
-//        if(current_num < bnum) {
-//            last_seg = rxm;
-//            current_num++;
-//            goto next_desc;
-//        }
-//        hns->stats.rx_pkts++;
-//        bnum_flag = rte_le_to_cpu_32(rxd.rx.ipoff_bnum_pid_flag);
-//       // ip_offset=rte_le_to_cpu_16(hnae_get_field(rxd.rx.ipoff_bnum_pid_flag,HNS_RXD_IPOFFSET_M, HNS_RXD_IPOFFSET_S));
-//       // printf("RX ip offset= %u",ip_offset);
-//        //if(unlikely(!hnae_get_bit(bnum_flag, HNS_RXD_VLD_B))) goto pkt_err;
-//        //if(unlikely((!rxd.rx.pkt_len) || hnae_get_bit(bnum_flag, HNS_RXD_DROP_B))) goto pkt_err;
-//        //if(unlikely(hnae_get_bit(bnum_flag, HNS_RXD_L2E_B))) goto pkt_err;
-//        
-//        rxm->next = NULL;
-//        //rte_packet_prefetch((char *)first_seg->buf_addr + first_seg->data_off);
-//        first_seg->packet_type = rxd_pkt_info_to_pkt_type(rxd.rx.ipoff_bnum_pid_flag);
-//        rx_pkts[nb_rx++] = first_seg;
-//        first_seg = NULL;
-//        continue;
-//pkt_err:
-//        printf("pkt err in recv\n");
-//        rte_pktmbuf_free_seg(rxm);
-//        first_seg = NULL;
-//    }
-//    rxq->next_to_clean = rx_id;
-//    rxq->pkt_first_seg = first_seg;
-//    rxq->pkt_last_seg = last_seg;
-//    rxq->current_num = current_num;
-//    hns_clean_rx_buffers(rxq, nb_hold);
-//    return nb_rx;	
-//    }
-//    else{
-//	struct hns_rx_queue *rxq = rx_queue;
-//	uint8_t split_flags[32] = {0};   //收包对应的分片标记位数组，大小为同时收包的最大值，这里设定的是32
-//	int rx_nb;
-//	struct hns_adapter *hns;
-//	
-//	hns = rxq->hns;
-//	
-//	/* 收取nb_pkts个描述符 */
-//	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
-//			split_flags);
-//	
-//	/* happy day case, full burst + no packets to be joined */   //最好情况，收的包全都不是分片的，直接成功
-//	const uint64_t *split_fl64 = (uint64_t *)split_flags;
-//
-//	if (rxq->pkt_first_seg == NULL &&
-//			split_fl64[0] == 0 && split_fl64[1] == 0 &&
-//			split_fl64[2] == 0 && split_fl64[3] == 0)
-//		return nb_bufs;
-//		
-//	/* reassemble any packets that need reassembly*/    //如果需要分片，那就看现在rxq的pkt_first_seg 是不是null，是的话在这次收的描述符中就找到第一个分片的mbuf
-//	unsigned i = 0;
-//
-//	if (rxq->pkt_first_seg == NULL) {
-//		/* find the first split flag, and only reassemble then*/
-//		while (i < nb_bufs && !split_flags[i])
-//			i++;
-//		if (i == nb_bufs)
-//			return nb_bufs;
-//	}
-//	rx_nb = i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
-//		&split_flags[i]);    //然后把分了片的组装起来
-//	hns->stats.rx_pkts+=rx_nb;
-//	
-//	return rx_nb;
-//    }
-}
-
-
+}    
+/**
+ * recv pkts
+ *
+ * (one error )
+ * checked by lyz
+ * 2018/06/20
+ */
 static uint16_t
 eth_hns_recv_pkts_remain(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -1465,6 +1356,7 @@ next_desc:
         if(current_num < bnum) {
             last_seg = rxm;
             current_num++;
+            if(nb_hold >= num) break;
             goto next_desc;
         }
         hns->stats.rx_pkts++;
@@ -1532,9 +1424,6 @@ hns_tx_clean(struct hns_tx_queue *txq)
 static void
 hns_queue_xmit(struct hns_tx_queue *txq, int buf_num){
     struct hns_adapter *hns = txq->hns;
-    //dsaf_reg_write(hns->uio_index, RCB_REG_TAIL, buf_num, hns->cdev_fd,txq->queue_id,1);
-    //(void)reg_write;
-    //(void)reg_read;
     reg_write(hns->io_base, RCB_REG_TAIL, txq->queue_id,1, buf_num);
 }
 
@@ -1555,7 +1444,12 @@ tx_ring_space(struct hns_tx_queue *txq){
 
 #define BD_MAX_SEND_SIZE 8191
 
-
+/**
+ * fill one desc
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
          int buf_num, int port_id, int offset, int size, int frag_end)
@@ -1608,6 +1502,13 @@ fill_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
         txq->next_to_use = 0;
 }
 
+/**
+ * split one pkt and fill several desc
+ * when tso is enabled
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static int
 fill_tso_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
         int buf_num, int port_id, int offset, int size, int frag_end)
@@ -1628,6 +1529,13 @@ fill_tso_desc(struct hns_tx_queue* txq, struct rte_mbuf* rxm, int first,
     return frag_buf_num;
 }
 
+
+/**
+ * release all mbufs in tx queue
+ *
+ * checked by lyz
+ * 2018/06/20
+ */
 static void
 hns_tx_queue_release_mbufs(struct hns_tx_queue *txq)
 {
@@ -1645,7 +1553,9 @@ hns_tx_queue_release_mbufs(struct hns_tx_queue *txq)
  *
  * @param txq
  *      TX queue pointer
- *
+ * 
+ * checked by lyz
+ * 2018/06/20
  */
 void
 eth_hns_tx_queue_release(void *queue) {
@@ -1674,7 +1584,9 @@ eth_hns_tx_queue_release(void *queue) {
  *
  * @return
  *      0 on success, negative errno value on failure.
- *
+ * 
+ * checked by lyz
+ * 2018/06/20
  */
 static int
 eth_hns_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
@@ -1682,6 +1594,8 @@ eth_hns_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 {
     struct hns_adapter *hns = dev->data->dev_private;
     struct hns_tx_queue *txq;
+	int num;
+	struct hns_uio_ioctrl_para args;
     
     (void) socket;
     (void) conf;
@@ -1698,6 +1612,9 @@ eth_hns_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
     txq->nb_tx_desc = hns->desc_num_per_txq;
     txq->queue_id = idx;
     txq->tx_ring = hns->tx_desc[idx];
+	
+	num = reg_read(hns->io_base, RCB_REG_HEAD, txq -> queue_id + dev->data->nb_tx_queues, 0);
+	
     txq->nb_hold = 0;    
     txq->sw_ring = rte_zmalloc("txq->sw_ring",
                                 sizeof(struct hns_tx_entry) * txq->nb_tx_desc,
@@ -1709,8 +1626,17 @@ eth_hns_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 
     PMD_INIT_LOG(DEBUG, "sw_ring=%p", txq->sw_ring);
     dev->data->tx_queues[idx] = txq;
-    txq->next_to_use = 0;
-    txq->next_to_clean = 0;
+	
+	int uio_index = hns->uio_index;
+	args.index = uio_index;
+	args.value = idx;
+	if (ioctl(hns->cdev_fd, HNS_UIO_IOCTL_NEXT, &args) < 0){
+		PMD_INIT_LOG(ERR, "Get next no. failed!");
+		return -EIO;
+	}
+	txq->next_to_use = (unsigned int) args.value;
+	txq->next_to_clean = num % (txq->nb_tx_desc);
+	
     txq->hns = hns;
     return 0;
 }
@@ -1927,73 +1853,6 @@ end_of_tx:
     hns_tx_clean(txq);
     //printf("nb_tx:%d\n",nb_tx);
     return nb_tx;
-//    struct hns_tx_queue *txq;
-//    struct rte_mbuf *tx_pkt;
-//    struct rte_mbuf *m_seg;
-//    struct rte_mbuf *temp;
-//    struct hns_adapter *hns;
-//
-//    uint16_t tx_id;
-//    uint16_t nb_tx;
-//    uint16_t nb_buf;
-//    uint16_t port_id;
-//    uint32_t nb_hold;
-//    unsigned int i;
-//    txq = tx_queue;
-//    nb_hold = 0;
-//    hns = txq->hns;
-//    tx_id   = txq->next_to_use;
-//    (void) hns;
-//   // printf("next_to_use:%d,next_to_clean:%d\n",txq->next_to_use,txq->next_to_clean);
-//   // printf("nb_pkts:%d, space:%d, txq:%d,\n",nb_pkts,tx_ring_space(txq),txq->queue_id);
-//    for(nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
-//        tx_pkt = *tx_pkts++;
-//
-//        nb_buf = tx_pkt->nb_segs;
-//        
-//        if(nb_buf > tx_ring_space(txq)){
-//            hns_tx_clean(txq);
-//			//if(nb_buf > tx_ring_space(txq)){
-//     //       if(hns->port == 5)
-//     //       printf("port:%d,result found at no ring space,nb_buf:%d!\n",hns->port,nb_buf);
-//     //       printf("nb_buf:%d, space:%d\n",nb_buf,tx_ring_space(txq));
-//            if(nb_tx == 0){
-//                return 0;
-//            }
-//            goto end_of_tx;
-//			//}
-//        }
-//
-//        m_seg = tx_pkt;
-//        port_id = m_seg->port;
-//        nb_buf = m_seg->nb_segs;
-//        for(i = 0; i < nb_buf; i++){
-//            hns->stats.tx_bytes += m_seg->pkt_len;
-//            if(hns->tso){
-//                int frags = fill_tso_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
-//                nb_hold += (frags-1);
-//            }
-//            else{
-//                fill_desc(txq, m_seg, (i==0), nb_buf, port_id,0,rte_cpu_to_le_16((uint16_t)m_seg->pkt_len),m_seg->next == NULL?1:0);
-//            }
-//            temp = m_seg->next;
-//            rte_pktmbuf_free(m_seg);
-//            m_seg = temp;
-//            tx_id++;
-//            if((tx_id & 0x3) == 0)
-//                rte_hns_prefetch(m_seg);
-//            if(tx_id == txq->nb_tx_desc)
-//                tx_id = 0;
-//        }
-//        hns->stats.tx_pkts++;
-//        nb_hold += nb_buf;
-//    }
-//end_of_tx:
-//    rte_wmb();
-//    hns_queue_xmit(txq, (unsigned long long)nb_hold);
-//    //printf("xmit pkt:%d\n",nb_hold);
-//    hns_tx_clean(txq);
-//    //printf("nb_tx:%d\n",nb_tx);
 //    return nb_tx;
 }
 
@@ -2460,7 +2319,9 @@ eth_hns_dev_init (struct rte_eth_dev *dev){
     //set dev_ops
     dev->dev_ops = &eth_hns_ops;
 
-    
+    //set stopped
+    hns->stopped = 0;
+
     //set io_base
     hns->io_base = (void *)pdev->mem_resource[0].addr;
 
@@ -2542,9 +2403,10 @@ eth_hns_dev_uninit (struct rte_eth_dev *dev){
     struct hns_adapter *hns = dev->data->dev_private;
     struct rte_platform_device *platform_dev;
     
-    if (hns->stopped == 0)
+    if (hns->stopped == 0){
+        printf("TRY TO STOP HNS!!!!!!!!!!!!\n");
         eth_hns_close(dev);
-
+    }
     platform_dev = HNS_DEV_TO_PLATFORM(dev);
     if(platform_dev->intr_handle.intr_vec){
         rte_free(platform_dev->intr_handle.intr_vec);
@@ -2580,9 +2442,6 @@ static struct rte_platform_driver rte_hns_pmd = {
 	.probe = eth_hns_platform_probe,
 	.remove = eth_hns_platform_remove,
 };
-
-
-
 
 RTE_PMD_REGISTER_PLATFORM(net_hns, rte_hns_pmd);
 /*PMD_REGISTER_DRIVER(rte_hnsvf_driver, hnsvf);*/

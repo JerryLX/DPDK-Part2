@@ -1,5 +1,5 @@
 dep_main.o = /root/dpdk-part2/examples/l2fwd/main.c /usr/include/stdc-predef.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_config.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_config.h \
  /usr/include/stdio.h /usr/include/features.h \
  /usr/include/aarch64-linux-gnu/sys/cdefs.h \
  /usr/include/aarch64-linux-gnu/bits/wordsize.h \
@@ -73,61 +73,61 @@ dep_main.o = /root/dpdk-part2/examples/l2fwd/main.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/sys/user.h \
  /usr/include/aarch64-linux-gnu/bits/sigthread.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include/stdbool.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_common.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_common.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include-fixed/limits.h \
  /usr/lib/gcc/aarch64-linux-gnu/5/include-fixed/syslimits.h \
  /usr/include/limits.h /usr/include/aarch64-linux-gnu/bits/posix1_lim.h \
  /usr/include/aarch64-linux-gnu/bits/local_lim.h \
  /usr/include/linux/limits.h \
  /usr/include/aarch64-linux-gnu/bits/posix2_lim.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_log.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_malloc.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memory.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_config.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/exec-env/rte_dom0_common.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memcpy.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memcpy_64.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_memcpy.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_memzone.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_eal.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_log.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_malloc.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_memory.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_config.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/exec-env/rte_dom0_common.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_memcpy.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_memcpy_64.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_memcpy.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_memzone.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_eal.h \
  /usr/include/sched.h /usr/include/aarch64-linux-gnu/bits/sched.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_per_lcore.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_per_lcore.h \
  /usr/include/pthread.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_launch.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_atomic.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_atomic_64.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_atomic.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_cycles.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_cycles_64.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_cycles.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_debug.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_log.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_branch_prediction.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_prefetch.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_prefetch_64.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_prefetch.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_lcore.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_branch_prediction.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_interrupts.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/exec-env/rte_interrupts.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_pci.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_dev.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_bus.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_pci_platform.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_random.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ether.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_mbuf.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_mempool.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_spinlock.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_spinlock.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ring.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_mbuf_ptype.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_byteorder.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/generic/rte_byteorder.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ethdev.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_devargs.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_errno.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_platform.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_ether.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_eth_ctrl.h \
- /root/dpdk-part2/arm64-armv8a-linuxapp-gcc/include/rte_dev_info.h
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_launch.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_atomic.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_atomic_64.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_atomic.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_cycles.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_cycles_64.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_cycles.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_debug.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_log.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_branch_prediction.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_prefetch.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_prefetch_64.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_prefetch.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_lcore.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_branch_prediction.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_interrupts.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/exec-env/rte_interrupts.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_pci.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_dev.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_bus.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_pci_platform.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_random.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_ether.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_mbuf.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_mempool.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_spinlock.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_spinlock.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_ring.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_mbuf_ptype.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_byteorder.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/generic/rte_byteorder.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_ethdev.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_devargs.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_errno.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_platform.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_ether.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_eth_ctrl.h \
+ /root/dpdk-part2//arm64-armv8a-linuxapp-gcc/include/rte_dev_info.h

@@ -11,12 +11,21 @@
 #include <rte_memcpy.h>
 #include <sys/stat.h>
 #include <rte_bus.h>
+#include <sys/ioctl.h>
+#include <rte_log.h>
 
 #include "eal_filesystem.h"
 #include "eal_private.h"
 #include "eal_platform_init.h"
 
 extern struct rte_platform_bus rte_platform_bus;
+
+struct eal_platform_ioctrl_para {
+    unsigned long long index;
+    unsigned long long cmd;
+    unsigned long long value;
+    unsigned char data[200];
+};
 
 static int
 platform_get_kernel_driver_by_path(const char *filename, char *dri_name)
@@ -68,7 +77,7 @@ platform_unbind_kernel_driver(struct rte_platform_device *dev)
 		name);
 
 	f = fopen(filename, "w");
-	if (f == NULL) /* device was not bound */
+	if (f == NULL) /* device is not bounded */
 		return 0;
 
 	n = snprintf(buf, sizeof(buf), "%s\n",
@@ -98,7 +107,6 @@ rte_platform_map_device(struct rte_platform_device *dev)
 	switch (dev->kdrv) {
     case RTE_KDRV_HNS_UIO:
     case RTE_KDRV_PLF_UIO:
-        
         ret = platform_uio_map_resource(dev);
         break;
     default:
@@ -127,7 +135,11 @@ rte_platform_unmap_device(struct rte_platform_device *dev)
 	return;
 }
 
-
+/*   
+    Read phys_addr and size from fd in /sys/bus/platform
+    and save in the rte_platform_device struct
+    check mqc  2018/06/20
+*/
 static int
 platform_uio_parse_one_map(struct rte_platform_device *dev,
         int index, const char *parent_dirname)
@@ -167,6 +179,12 @@ platform_uio_parse_one_map(struct rte_platform_device *dev,
     return 0;
 }
 
+
+/*
+    Scan in dir to find  maps file for platform_uio_parse_one_map
+    check mqc   2018/06/20
+
+*/
 static int
 platform_uio_parse_map(struct rte_platform_device *dev,
         const char *filename)
@@ -194,11 +212,36 @@ platform_uio_parse_map(struct rte_platform_device *dev,
         index++;
         free(namelist[i]);
     }
+    /*
+    int uio_index = 
+        (int)dev->mem_resource[3].phys_addr;
+    int fd;
+    int len;
+    struct eal_platform_ioctrl_para args;
 
+    fd = open("/dev/nic_uio", O_RDWR);
+    args.index = uio_index;
+    if(ioctl(fd, 34, &args) < 0) {
+        printf("Get compatible attribute failed!");
+        return -1;
+    }
+    if(args.value ==1){
+        printf("got compatible\n");
+        len = strlen((const char *)args.data)+1;
+        dev->compatible = malloc(len+1);
+        memset(dev->compatible,0,len);
+        snprintf(dev->compatible, len, "%s", args.data);
+        printf("get compatible!!!!!!!!:%s\n",dev->compatible);
+    }
+    */
     return 0;
 }
 
-/* Scan one platform sysfs entry, and fill the devices list from it. */
+/* Scan one platform sysfs entry, and fill the devices list from it. 
+ * Check mqc  2018/06/20
+ *
+ * 
+ * */
 static int
 platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 {
@@ -279,6 +322,13 @@ platform_scan_one(const char *dirname, const char *dev_name, int uio_num)
 	return 0;
 }
 
+
+
+/*    
+ *  Scan in the platform device for uio divice
+ *  Check mqc  2018/06/20
+ *  */
+
 static int
 platform_scan_uio(const char *dirname, const char *dev_name)
 {
@@ -342,6 +392,8 @@ platform_find_max_end_va(void)
  * list
  *
  * by lixu
+ *
+ * check mqc  2018/06/20
  */
 int 
 rte_platform_scan(void)

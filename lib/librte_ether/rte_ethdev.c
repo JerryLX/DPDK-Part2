@@ -220,7 +220,8 @@ rte_eth_dev_allocate(const char *name)
 	uint8_t port_id;
 	struct rte_eth_dev *eth_dev;
     port_id = rte_eth_dev_find_free_port();
-	printf("eth alloc,port:%d, name:%s\n",port_id,name);
+	
+    //printf("eth alloc,port:%d, name:%s\n",port_id,name);
 	if (port_id == RTE_MAX_ETHPORTS) {
 		RTE_PMD_DEBUG_TRACE("Reached maximum number of Ethernet ports\n");
 		return NULL;
@@ -290,8 +291,10 @@ int
 rte_eth_dev_is_valid_port(uint8_t port_id)
 {
 	if (port_id >= RTE_MAX_ETHPORTS ||
-	    rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED)
-		return 0;
+	    rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED){
+		printf("port: %d is invalid\n", port_id);
+        return 0;
+    }
 	else
 		return 1;
 }
@@ -943,7 +946,7 @@ rte_eth_dev_stop(uint8_t port_id)
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
-
+printf("try to stop: %d\n",port_id);
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_stop);
 
 	if (dev->data->dev_started == 0) {

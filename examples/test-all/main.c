@@ -83,17 +83,34 @@
 static uint64_t timer_period = 100000000;
 #define nTEST_CORE 6
 #define nQUEUE 16
-
+FILE *output;
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN, },
 };
 
+static volatile bool force_quit;
 static unsigned nb_ports;
 /*
  * Initialises a given port using global settings and with the rx buffers
  * coming from the mbuf_pool passed as parameter
  */
+ 
+static void nic_display_pkt(struct rte_mbuf *buf)
+{
+	uint8_t i;
+	uint8_t size = 250;
+	uint8_t* pkt_buf = buf->buf_addr;
+
+	fprintf(output, "pkt:\n");
+	for (i = 0; i < size; i++) {
+		fprintf(output, "  %02x", pkt_buf[i]);
+		if ((i != 0 && i % 16 == 0 ) || (i == size - 1))
+			fprintf(output, "\n");
+	}
+	fflush(output);
+}
+ 
 static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
@@ -151,6 +168,16 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 }
 
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\n\nSignal %d received, preparing to exit...\n",
+				signum);
+		force_quit = true;
+	}
+}
+
 static void lcore_main(void)
 {
 	uint8_t port = 1;
@@ -178,7 +205,7 @@ static void lcore_main(void)
     prev_tsc = 0;
 	printf("\nCore %u forwarding packets. [Ctrl+C to quit]\n",
 			rte_lcore_id());
-	 for(;;){
+	while(!force_quit){
         cur_tsc = rte_rdtsc();
         if(unlikely(cur_tsc-prev_tsc>timer_period)){
             prev_tsc = cur_tsc;
@@ -194,7 +221,7 @@ static void lcore_main(void)
             }
             printf("=====================================\n");
         }
-        for(port=0;port<10;port++){
+        for(port=0;port<8;port++){
 		if ((enabled_port_mask & (1 << port)) == 0) {
 			continue;
 	 	}       
@@ -203,7 +230,8 @@ static void lcore_main(void)
            			bufs, BURST_SIZE);
            	    count[qid][port] += nb_rx;
                 if(nb_rx == 0) continue;
-			 	
+			 	for (int i = 0; i < nb_rx; i++)
+					nic_display_pkt(bufs[i]);
                 nb_tx = rte_eth_tx_burst(port,qid ,bufs, nb_rx);
 
 				count_tx[qid][port] += nb_tx;
@@ -235,6 +263,7 @@ main(int argc, char *argv[])
 	struct rte_mempool *mbuf_pool;
 	uint8_t portid;
 
+	output = fopen("pkt_buf.out", "w");
 	/* init EAL */
 	int ret = rte_eal_init(argc, argv);
 
@@ -243,13 +272,12 @@ main(int argc, char *argv[])
 	argc -= ret;
 	argv += ret;
 
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
     
 	nb_ports = rte_eth_dev_count();
     printf("num of ports: %d\n", nb_ports);
-	
-
-    
-	
 	
 	if (nb_ports < 2 || (nb_ports & 1))
 		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
@@ -275,6 +303,14 @@ main(int argc, char *argv[])
 	
 
     lcore_main();
+	fclose(output);
+	for (portid = 0; portid < nb_ports; portid++) {
+		printf("Closing port %d...", portid);
+		rte_eth_dev_stop(portid);
+		rte_eth_dev_close(portid);
+		printf(" Done\n");
+	}
+	printf("Bye...\n");
 
 	return 0;
 }

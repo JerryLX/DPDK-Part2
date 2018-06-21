@@ -16,7 +16,6 @@
  * @return
  *   - 0 on success, negative on error
  */
-
 static inline void
 rte_eth_copy_platform_info(struct rte_eth_dev *eth_dev, struct rte_platform_device *platform_dev)
 {
@@ -29,7 +28,9 @@ rte_eth_copy_platform_info(struct rte_eth_dev *eth_dev, struct rte_platform_devi
 	eth_dev->data->dev_flags = 0;
 	if (platform_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-	// if (platform_dev->driver->drv_flags & RTE_PCI_DRV_DETACHABLE)    temporarily removed for debug by mqc
+	if (platform_dev->driver->drv_flags & RTE_PCI_DRV_INTR_RMV)
+            eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
+    // if (platform_dev->driver->drv_flags & RTE_PCI_DRV_DETACHABLE)    temporarily removed for debug by mqc
 	//	  eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	eth_dev->data->kdrv = platform_dev->kdrv;
@@ -121,8 +122,6 @@ rte_eth_dev_platform_generic_probe(struct rte_platform_device *platform_dev,
 	struct rte_eth_dev *eth_dev;
 	int ret;
 
-	printf("rte_eth_dev_platform_generic_probe:%s\n",platform_dev->name); // for debug by mqc
-	
 	eth_dev = rte_eth_dev_platform_allocate(platform_dev, private_data_size);
 	if (!eth_dev)
 		return -ENOMEM;
